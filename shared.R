@@ -52,6 +52,13 @@ binInterventions <- function(df, bins) {
 }
 
 
+dropPartialRuns <- function(df) {
+  # TODO: Actually drops last, but should drop partials
+  top <- max(df$RUN)
+  return(subset(df, df$RUN != top))
+}
+
+
 
 
 # ==================
@@ -93,6 +100,9 @@ getSet <- function(input, cache_folder, cache_name, fun) {
   } else {
     print('Reading file')
     df <- load(input)
+
+    print('Cleaning file')
+    df <- dropPartialRuns(df)
 
     print('Applying pre-processing')
     df <- fun(df)
