@@ -49,7 +49,7 @@ colorscale <- function(df) {
 
 # PREPARE
 # ============================================
-df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv',
+df <- getSet(args$input, args$cache, 'entries-by-intervention-and-group.csv',
              function(df) {
                df <- binInterventions(df, intervention_bins)
                df <- groupBy(df, c('RUN', 'proj_group', 'intervention_bin_top'))
