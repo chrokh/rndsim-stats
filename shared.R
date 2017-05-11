@@ -88,7 +88,7 @@ load <- function(path, cols = NULL) {
   return(df)
 }
 
-getSet <- function(input, cache_folder, cache_name, fun) {
+getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
   # Set max memory limit
   memory.size(max=TRUE)
   memory.limit(size=17000000000000)
@@ -99,7 +99,7 @@ getSet <- function(input, cache_folder, cache_name, fun) {
     df <- load(path)
   } else {
     print('Reading file')
-    df <- load(input)
+    df <- load(input, cols)
 
     print('Cleaning file')
     df <- dropPartialRuns(df)
