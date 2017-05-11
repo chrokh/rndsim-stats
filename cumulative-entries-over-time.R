@@ -48,6 +48,9 @@ colorscale  <- brewer.pal(length(intervention_bins), 'RdYlGn')
 # PREPARE
 # ============================================
 
+count_entries <- function(proj_is_at_poi) {
+  sum(ifelse(proj_is_at_poi == 'true', 1, 0))
+}
 prepare <- function(df) {
 
   # Bin interventions
@@ -58,7 +61,8 @@ prepare <- function(df) {
   for (tick in unique(df$TICK)) {
     print(paste('Grouping tick', tick))
     single <- subset(df, df$TICK <= tick)
-    single <- groupBy(single, c('RUN', 'intervention_bin_top'))
+    single <- ddply(single, c('RUN', 'intervention_bin_top'), summarise,
+                    num_pois = count_entries(proj_is_at_poi))
     single$year <- tick / 12
     all <- rbind(all, single)
   }
@@ -66,7 +70,8 @@ prepare <- function(df) {
   return(all)
 
 }
-df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare)
+cols <- c('RUN', 'TICK', 'proj_is_at_poi', 'interventions_tot_size')
+df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare, cols)
 
 
 
@@ -76,7 +81,7 @@ df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare
 # ============================================
 
 plotToFile(args$output)
-p <- ddply(df, c('year', 'intervention_bin_top'), summarise, mean_pois = mean(tot_pois))
+p <- ddply(df, c('year', 'intervention_bin_top'), summarise, mean_pois = mean(num_pois))
 p$color  <- colorscale[findInterval(p$intervention_bin_top, unique(p$intervention_bin_top))]
 plot(p$mean_pois ~ p$year,
      main = paste("Cumulative market entries (mean per run) per year", args$label),
