@@ -37,12 +37,17 @@ only_reached_market <- function(d) {
 
 
 binInterventions <- function(df, bins) {
+  # Drop if outside of bin edges
+  df <- subset(df, df$interventions_tot_size >= min(intervention_bins) & df$interventions_tot_size <= max(intervention_bins))
+
+  # Bin
   smallNumber  <- 0.00001
   expandedBins <- bins
   expandedBins[1] <- expandedBins[1] + smallNumber
   expandedBins[length(expandedBins)] <- expandedBins[length(expandedBins)] + smallNumber
   df$intervention_bin      <- findInterval(df$interventions_tot_size, expandedBins)
   df$intervention_bin_top  <- bins[df$intervention_bin + 1]
+
   return(df)
 }
 
