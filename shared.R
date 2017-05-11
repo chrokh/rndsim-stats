@@ -8,6 +8,10 @@ library('optparse')
 # Data frame transformations
 # ==================
 
+# Can be used as function in ddply
+countEntries <- function(proj_is_at_poi) {
+  sum(ifelse(proj_is_at_poi == 'true', 1, 0))
+}
 
 groupBy <- function(df, cols) {
   print('Adding column(s)')

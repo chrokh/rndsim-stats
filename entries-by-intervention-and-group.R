@@ -49,10 +49,13 @@ colorscale <- function(df) {
 
 # PREPARE
 # ============================================
+cols <- c('RUN', 'proj_group', 'intervention_bin_top', 'proj_is_at_poi')
 df <- getSet(args$input, args$cache, 'entries-by-intervention-and-group.csv',
              function(df) {
                df <- binInterventions(df, intervention_bins)
-               df <- groupBy(df, c('RUN', 'proj_group', 'intervention_bin_top'))
+               df <- ddply(df, c('RUN', 'proj_group', 'intervention_bin_top'), summarise,
+                           tot_pois = countEntries(proj_is_at_poi))
+
                return(df)
              })
 
