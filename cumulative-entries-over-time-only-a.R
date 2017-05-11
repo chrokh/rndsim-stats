@@ -83,6 +83,7 @@ p <- ddply(df, c('year', 'intervention_bin_top'), summarise, mean_pois = mean(to
 p$color  <- colorscale[findInterval(p$intervention_bin_top, unique(p$intervention_bin_top))]
 plot(p$mean_pois ~ p$year,
      main = paste("Cumulative market entries (mean per run) per year", args$label),
+     sub  = '(Only project group A)',
      col  = p$color,
      pch  = 19,
      xlab = "Year",
