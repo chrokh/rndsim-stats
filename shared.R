@@ -82,6 +82,10 @@ load <- function(path, cols = NULL) {
 }
 
 getSet <- function(input, cache_folder, cache_name, fun) {
+  # Set max memory limit
+  memory.size(max=TRUE)
+  memory.limit(size=17000000000000)
+
   path <- file.path(cache_folder, cache_name)
   if (file.exists(path)) {
     print('Reading cache')
