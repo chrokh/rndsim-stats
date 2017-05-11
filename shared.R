@@ -105,7 +105,7 @@ getSet <- function(input, cache_folder, cache_name, fun) {
 }
 
 plotToFile <- function(path) {
-  png(path, width = 1000, height = 1000, res = 140)
+  png(path, width = 1400, height = 1000, res = 140)
 }
 
 buildLim <- function(lo, hi) {
