@@ -58,8 +58,34 @@ binInterventions <- function(df, bins) {
 
 dropPartialRuns <- function(df) {
   # TODO: Actually drops last, but should drop partials
-  top <- max(df$RUN)
-  return(subset(df, df$RUN != top))
+  if('RUN' %in% colnames(df)) {
+    top <- max(df$RUN)
+    return(subset(df, df$RUN != top))
+  } else {
+    print('-> Did not load column RUN. Cannot drop partial runs.')
+    return(df)
+  }
+}
+
+
+factorizeStages <- function(stages) {
+  return(factor(stages, levels = c(
+    'PreClinical',
+    'Phase1',
+    'Phase2',
+    'Phase3',
+    'Approval',
+    'Market1',
+    'Market2',
+    'Market3',
+    'Market4',
+    'Market5',
+    'Market6',
+    'Market7',
+    'Market8',
+    'Market9',
+    'Market10'
+  )))
 }
 
 
