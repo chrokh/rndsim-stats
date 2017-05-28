@@ -4,11 +4,12 @@ Plot scripts in R for rndsim.
 
 # Usage
 
-The scripts are loading files using relative paths based on execution location. This means that all scripts assume that you run them while being in that folder. Scripts can be run with multiple flags.
-
 ```
+$ git clone https://github.com/chrokh/rndsim-stats.git
 $ cd rndsim-stats
 $ rscript <script.R> <--flag> <value> ...
 ```
 
-Run `rscript <script.R>` with no parameters to access help menu for all scripts.
+The scripts are loading shared files using relative paths based on execution location. This means that you **must `cd` to the location of the script** before attempting to run it. I.e. you must run it from the directory in which it resides.
+
+Different scripts may support different flags/arguments. Run the script without any arguments to access the help menu for that script.
