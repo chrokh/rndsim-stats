@@ -39,7 +39,6 @@ args <-
 
 # CONFIG
 # ============================================
-intervention_bins <- c(0, 100, 200, 500, 700, 1000, 1200, 1500, 1700, 2000, 2500, 3000, 4000)
 colorscale <- function(df) {
   rev(brewer.pal(nlevels(factor(df$proj_group)), "Set1"))
 }
@@ -49,15 +48,13 @@ colorscale <- function(df) {
 
 # PREPARE
 # ============================================
-cols <- c('RUN', 'proj_group', 'intervention_bin_top', 'proj_is_at_poi')
+cols <- c('RUN', 'proj_group', 'interventions_tot_size', 'proj_is_at_poi')
 df <- getSet(args$input, args$cache, 'entries-by-intervention-and-group.csv',
              function(df) {
-               df <- binInterventions(df, intervention_bins)
-               df <- ddply(df, c('RUN', 'proj_group', 'intervention_bin_top'), summarise,
+               df <- ddply(df, c('RUN', 'proj_group', 'interventions_tot_size'), summarise,
                            tot_pois = countEntries(proj_is_at_poi))
-
                return(df)
-             })
+             }, cols)
 
 
 
@@ -69,7 +66,7 @@ plotToFile(args$output)
 df$color   <- colorscale(df)[factor(df$proj_group)]
 categories <- length(unique(df$proj_group))
 boxcolors  <- rep(head(colorscale(df), categories), categories)
-plot(df$tot_pois  ~ interaction(df$proj_group, df$intervention_bin_top),
+plot(df$tot_pois  ~ interaction(df$proj_group, df$interventions_tot_size),
      boxfill = boxcolors,
      main    = paste('Total entries per group and intervention size', args$label),
      ylab    = 'Number of entries',
@@ -79,7 +76,7 @@ plot(df$tot_pois  ~ interaction(df$proj_group, df$intervention_bin_top),
      )
 
 pos_after_group <- seq(from = nlevels(factor(df$proj_group)) + 0.5,
-                       to = (nlevels(factor(df$proj_group)) * length(unique(df$intervention_bin_top))),
+                       to = (nlevels(factor(df$proj_group)) * length(unique(df$interventions_tot_size))),
                        by = nlevels(factor(df$proj_group)))
 abline(h = NULL, v = pos_after_group, col = 'darkgray', lty = 'solid')
 

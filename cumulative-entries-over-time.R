@@ -1,5 +1,4 @@
 source('shared.R')
-library(RColorBrewer)
 
 
 # ARGUMENTS
@@ -30,7 +29,12 @@ args <-
                              c('--ylimit'),
                              default = NULL,
                              help    = 'ylim max of plot [default= %default]',
-                             metavar = 'float')
+                             metavar = 'float'),
+                 make_option(
+                             c('--proj_group'),
+                             default = NULL,
+                             help    = 'subset on project group [default= %default] [example= --proj_group A]',
+                             metavar = 'string')
                  ),
             function(args) !is.null(args$input))
 
@@ -39,8 +43,7 @@ args <-
 
 # CONFIG
 # ============================================
-intervention_bins <- c(0, 100, 200, 500, 700, 1000, 1500, 2000, 2500, 3000, 4000)
-colorscale  <- brewer.pal(length(intervention_bins), 'RdYlGn')
+generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
 
 
 
@@ -53,15 +56,12 @@ count_entries <- function(proj_is_at_poi) {
 }
 prepare <- function(df) {
 
-  # Bin interventions
-  df <- binInterventions(df, intervention_bins)
-
   # Cumulate entries per tick
   all <- data.frame()
   for (tick in unique(df$TICK)) {
     print(paste('Grouping tick', tick))
     single <- subset(df, df$TICK <= tick)
-    single <- ddply(single, c('RUN', 'intervention_bin_top'), summarise,
+    single <- ddply(single, c('RUN', 'proj_group', 'interventions_tot_size'), summarise,
                     num_pois = count_entries(proj_is_at_poi))
     single$year <- tick / 12
     all <- rbind(all, single)
@@ -70,7 +70,7 @@ prepare <- function(df) {
   return(all)
 
 }
-cols <- c('RUN', 'TICK', 'proj_is_at_poi', 'interventions_tot_size')
+cols <- c('RUN', 'TICK', 'proj_group', 'proj_is_at_poi', 'interventions_tot_size')
 df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare, cols)
 
 
@@ -79,27 +79,38 @@ df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare
 
 # PLOT
 # ============================================
-
 plotToFile(args$output)
-p <- ddply(df, c('year', 'intervention_bin_top'), summarise, mean_pois = mean(num_pois))
-p$color  <- colorscale[findInterval(p$intervention_bin_top, unique(p$intervention_bin_top))]
-plot(p$mean_pois ~ p$year,
+
+if (!is.null(args$proj_group)) {
+  df <- subset(df, df$proj_group == args$proj_group)
+}
+
+df <- ddply(df, c('year', 'interventions_tot_size'),
+            summarise,
+            mean_pois = mean(num_pois))
+
+interventions    <- unique(df$interventions_tot_size)
+numInterventions <- length(interventions)
+colorscale       <- generateColorscale(numInterventions)
+
+df$color  <- colorscale[findInterval(df$interventions_tot_size, interventions)]
+plot(df$mean_pois ~ df$year,
      main = paste("Cumulative market entries (mean per run) per year", args$label),
-     col  = p$color,
+     col  = df$color,
      pch  = 19,
      xlab = "Year",
      ylab = "Mean cumulative market entries",
-     xlim = c(min(p$year), max(p$year)),
+     xlim = c(min(df$year), max(df$year)),
      ylim = buildLim(NULL, args$ylim),
      xaxt="n"
      )
-axis(1, at = seq(from = 0, to = (max(p$year)), by = 1))
+axis(1, at = seq(from = 0, to = (max(df$year)), by = 1))
 grid(nx = 0, ny = NULL, col = 'darkgray', lty = 'dotted', equilogs = TRUE)
-legend('topleft', levels(factor(p$intervention_bin_top)), pch = 19, col = p$color, bty = 'n', title="Top")
-sub <- subset(p, p$year == max(p$year))
-text(sub$year, sub$mean_pois, sub$intervention_bin_top, cex=0.8, pos=4, font=2, col=sub$color)
+legend('topleft', levels(factor(df$interventions_tot_size)), pch = 19, col = df$color, bty = 'n', title="Top")
+sub <- subset(df, df$year == max(df$year))
+text(sub$year, sub$mean_pois, sub$interventions_tot_size, cex=0.8, pos=4, font=2, col=sub$color)
 
-for (bin in intervention_bins) {
-  sub <- subset(p, p$intervention_bin_top == bin)
+for (bin in interventions) {
+  sub <- subset(df, df$interventions_tot_size == bin)
   lines(sub$mean_pois ~ sub$year, col = sub$color)
 }

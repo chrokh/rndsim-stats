@@ -1,5 +1,4 @@
 source('shared.R')
-library(RColorBrewer)
 
 
 
@@ -44,8 +43,7 @@ args <-
 # Settings
 # ==================
 
-intervention_bins  <- c(0, 100, 1000, 2000, 3000, 4000)
-colorscale         <- rev(brewer.pal(length(intervention_bins), 'RdYlGn'))
+generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
 
 
 
@@ -60,14 +58,13 @@ df <- getSet(args$input, args$cache, 'interventions-over-time.csv', function(df)
   # Add years
   df$year <- df$TICK / 12
 
-  # Bin interventions
-  df <- binInterventions(df, intervention_bins)
+  # Group by run, year and intervention size
+  df <- groupBy(df, c('RUN', 'year',  'interventions_tot_size'))
 
-  # Group by run, year and intervention bin
-  df <- groupBy(df, c('RUN', 'year',  'intervention_bin_top'))
-
-  # Group by year and intervention bin, to calculate mean
-  df <- ddply(df, c('year', 'intervention_bin_top'), summarise, mean_pois = mean(tot_pois))
+  # Group by year and intervention size, to calculate mean
+  df <- ddply(df, c('year', 'interventions_tot_size'),
+              summarise,
+              mean_pois = mean(tot_pois))
 
   return(df)
 })
@@ -80,7 +77,11 @@ df <- getSet(args$input, args$cache, 'interventions-over-time.csv', function(df)
 # Plot
 # ==================
 
-df$color    <- colorscale[findInterval(df$intervention_bin_top, unique(df$intervention_bin_top))]
+interventions    <- unique(df$interventions_tot_size)
+numInterventions <- length(interventions)
+
+colorscale <- generateColorscale(numInterventions)
+df$color   <- colorscale[findInterval(df$interventions_tot_size, interventions)]
 
 plotToFile(args$output)
 plot(df$mean_pois ~ df$year,
@@ -95,13 +96,13 @@ plot(df$mean_pois ~ df$year,
 
 axis(1, at = seq(from = 0, to = (max(df$year)), by = 1))
 
-for (bin in intervention_bins) {
-  sub <- subset(df, df$intervention_bin_top == bin)
+for (bin in interventions) {
+  sub <- subset(df, df$interventions_tot_size == bin)
   lines(sub$mean_pois ~ sub$year, col = sub$color)
 }
 
-legend('topleft', levels(factor(df$intervention_bin_top)), pch = 19, col = df$color, bty = 'n', title="Amount")
+legend('topleft', levels(factor(df$interventions_tot_size)), pch = 19, col = df$color, bty = 'n', title='Amount')
 
 sub <- subset(df, df$year == max(df$year) | df$year == min(df$year) | (df$year) %% 10 == 0)
-text(sub$year, sub$mean_pois, sub$intervention_bin_top, cex=0.9, pos=4, font=2, col=sub$color)
+text(sub$year, sub$mean_pois, sub$interventions_tot_size, cex=0.9, pos=4, font=2, col=sub$color)
 grid(nx = 0, ny = NULL, col = 'darkgray', lty = 'dotted', equilogs = TRUE)
