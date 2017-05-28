@@ -39,6 +39,10 @@ only_reached_market <- function(d) {
   return(subset(d, d$PROJ %in% projs))
 }
 
+only_before_market <- function(df) {
+  return(subset(df, !grepl('Market', df$proj_stage_group)))
+}
+
 
 binInterventions <- function(df, bins) {
   # Drop if outside of bin edges
@@ -85,6 +89,16 @@ factorizeStages <- function(stages) {
     'Market8',
     'Market9',
     'Market10'
+  )))
+}
+
+factorizeDevStages <- function(stages) {
+  return(factor(stages, levels = c(
+    'PreClinical',
+    'Phase1',
+    'Phase2',
+    'Phase3',
+    'Approval'
   )))
 }
 
