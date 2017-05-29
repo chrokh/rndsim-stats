@@ -24,6 +24,10 @@ args <-
                  function(args) !is.null(args$input))
 
 
+if (args$input == args$output) {
+  print('ERROR: Input file is the same as output... you probably don\'t want this.')
+  exit()
+}
 
 
 # Read file
