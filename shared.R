@@ -159,7 +159,16 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
 }
 
 plotToFile <- function(path) {
-  pdf(path, width = 9, height = 7)
+  if (grepl('\\.pdf', path)) {
+    pdf(path, width = 9, height = 7)
+  } else {
+    png(path,
+        width = 2400,
+        height = 1800,
+        units = 'px',
+        res = 220
+        )
+  }
 }
 
 buildLim <- function(lo, hi) {
