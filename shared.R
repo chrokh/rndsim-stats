@@ -66,7 +66,7 @@ dropPartialRuns <- function(df) {
     top <- max(df$RUN)
     return(subset(df, df$RUN != top))
   } else {
-    print('-> Did not load column RUN. Cannot drop partial runs.')
+    print('Did not load column RUN. Cannot drop partial runs.')
     return(df)
   }
 }
@@ -123,6 +123,7 @@ parseArgs <- function(options, validate) {
 
 
 load <- function(path, cols = NULL) {
+  print(paste('Reading file', path))
   if (is.null(cols)) {
     df <- fread(path, sep = ",", header = TRUE, stringsAsFactors = FALSE)
   } else {
@@ -139,10 +140,9 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
 
   path <- file.path(cache_folder, cache_name)
   if (file.exists(path)) {
-    print('Reading cache')
+    print(paste('Reading cache'))
     df <- load(path)
   } else {
-    print('Reading file')
     df <- load(input, cols)
 
     print('Cleaning file')
@@ -152,13 +152,25 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
     df <- fun(df)
 
     print('Writing to cache')
+    ensurePathExists(path)
     write.csv(file = path, x = df)
   }
   print('Got data')
   return(df)
 }
 
+ensurePathExists <- function(path) {
+  if (dir.exists(dirname(path))) {
+    print(paste('Directory', dirname(path), 'exists'))
+  } else {
+    print(paste('Creating Directory', dirname(path)))
+    dir.create(dirname(path))
+  }
+}
+
 plotToFile <- function(path) {
+  ensurePathExists(path)
+  print(paste('Will plot to', path))
   if (grepl('\\.pdf', path)) {
     pdf(path, width = 9, height = 7)
   } else {
