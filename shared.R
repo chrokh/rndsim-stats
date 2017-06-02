@@ -79,16 +79,9 @@ factorizeStages <- function(stages) {
     'Phase2',
     'Phase3',
     'Approval',
-    'Market1',
-    'Market2',
-    'Market3',
-    'Market4',
-    'Market5',
-    'Market6',
-    'Market7',
-    'Market8',
-    'Market9',
-    'Market10'
+    'MarketEntry',
+    'MarketUptake',
+    'MarketPeak'
   )))
 }
 
