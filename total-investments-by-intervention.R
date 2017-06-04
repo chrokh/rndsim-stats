@@ -41,6 +41,8 @@ args <-
 # ============================================
 
 prepare <- function(df) {
+  print('(Subsetting on only PreClinical, Phase1, Phase2, Phase3)')
+  df <- subset(df, df$proj_stage_group %in% c('PreClinical', 'Phase1', 'Phase2', 'Phase3'))
   if (!is.null(args$proj_group)) {
     print('(Subsetting by proj group passed as argument)')
     df <- subset(df, df$proj_group == args$proj_group)
@@ -59,7 +61,8 @@ prepare <- function(df) {
 colsToRead <- c('RUN',
                 'PROJ',
                 'interventions_tot_size',
-                'proj_capital_accumulated')
+                'proj_capital_accumulated',
+                'proj_stage_group')
 df <- getSet(args$input, args$cache, 'total-investments-by-intervention.csv', prepare, colsToRead)
 
 
