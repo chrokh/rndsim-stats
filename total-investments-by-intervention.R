@@ -29,7 +29,12 @@ args <-
                              c('--ylimit'),
                              default = NULL,
                              help    = 'ylim max of plot [default= %default]',
-                             metavar = 'float')
+                             metavar = 'float'),
+                 make_option(
+                             c('--proj_group'),
+                             default = NULL,
+                             help    = 'subset on project group [default= %default]',
+                             metavar = 'string')
                  ),
             function(args) !is.null(args$input))
 
@@ -62,7 +67,8 @@ colsToRead <- c('RUN',
                 'PROJ',
                 'interventions_tot_size',
                 'proj_capital_accumulated',
-                'proj_stage_group')
+                'proj_stage_group',
+                'proj_group')
 df <- getSet(args$input, args$cache, 'total-investments-by-intervention.csv', prepare, colsToRead)
 
 
