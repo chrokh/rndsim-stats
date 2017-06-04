@@ -59,10 +59,20 @@ prepare <- function(df) {
   # Cumulate entries per tick
   all <- data.frame()
   for (tick in unique(df$TICK)) {
+
     print(paste('Grouping tick', tick))
     single <- subset(df, df$TICK <= tick)
-    single <- ddply(single, c('RUN', 'proj_group', 'interventions_tot_size'), summarise,
+
+    if (is.null(args$proj_group)) {
+      cols <- c('RUN', 'proj_group', 'interventions_tot_size')
+    } else {
+      cols <- c('RUN', 'interventions_tot_size')
+    }
+    single <- ddply(single,
+                    cols,
+                    summarise,
                     num_pois = count_entries(proj_is_at_poi))
+
     single$year <- tick / 12
     all <- rbind(all, single)
   }
