@@ -47,7 +47,7 @@ prepare <- function(df) {
     print('WARN: Subsetted data set will be written to cache!')
   }
   print('(Subsetting on only projects that received investors)')
-  df <- subset(df, df$proj_investors > 0)
+  df <- subset(df, df$proj_capital_accumulated > 0)
   print('(Grouping by project)')
   df <- ddply(df, c('RUN', 'PROJ', 'interventions_tot_size'), summarise,
               proj_investments = max(proj_capital_accumulated))
@@ -58,8 +58,9 @@ prepare <- function(df) {
 }
 colsToRead <- c('RUN',
                 'PROJ',
-                'interventions_tot_size')
-df <- getSet(args$input, args$cache, 'total-investments-by-intervention.csv', prepare)
+                'interventions_tot_size',
+                'proj_capital_accumulated')
+df <- getSet(args$input, args$cache, 'total-investments-by-intervention.csv', prepare, colsToRead)
 
 
 
