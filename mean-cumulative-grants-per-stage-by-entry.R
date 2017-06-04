@@ -53,9 +53,6 @@ prepare <- function(df) {
     print('WARN: Subsetted data set will be written to cache!')
   }
 
-  print('(Subsetting on only projects that received grants)')
-  df <- subset(df, df$proj_grants_accumulated > 0)
-
   print('Building Group1: All projects that reached market')
   grp1 <- only_reached_market(df)
 
@@ -75,7 +72,7 @@ prepare <- function(df) {
     print('(Grouping by run and stage group)')
     df <- ddply(df, c('RUN', 'proj_stage_group'),
                 summarise,
-                tot_grants = sum(proj_grants))
+                mean_grants = mean(proj_grants))
 
     return (df)
   }
@@ -94,7 +91,7 @@ prepare <- function(df) {
 }
 df <- getSet(args$input,
              args$cache,
-             'total-grants-per-stage-by-entry.csv',
+             'mean-cumulative-grants-per-stage-by-entry.csv',
              prepare,
              c('RUN',
                'PROJ',
@@ -127,10 +124,10 @@ plot(
                  df$group,
                  df$proj_stage_group
                  ),
-     df$tot_grants,
-     main  = paste('Total grants paid per run and stage', args$label),
+     df$mean_grants,
+     main  = paste('Mean cumulative grants paid per run, stage, and group (Yes = Did reach market)', args$label),
      xlab = '',
-     ylab = 'Total Grants Paid Per Run (up to P2)',
+     ylab = 'Mean Grants Paid Per Project(up to P2)',
      ylim = buildLim(NULL, args$ylim),
      las  = 2,
      )
