@@ -35,8 +35,14 @@ groupBy <- function(df, cols) {
 
 only_reached_market <- function(d) {
   projs <- subset(d, d$proj_is_at_poi == 'true')
-  projs <- c(projs$PROJ)
+  projs <- unique(projs$PROJ)
   return(subset(d, d$PROJ %in% projs))
+}
+
+only_did_not_reach_market <- function(d) {
+  projs <- subset(d, d$proj_is_at_poi == 'true')
+  projs <- unique(projs$PROJ)
+  return(subset(d, (!d$PROJ %in% projs)))
 }
 
 only_before_market <- function(df) {
