@@ -47,7 +47,6 @@ generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
 
 
 
-
 # PREPARE
 # ============================================
 
@@ -64,9 +63,9 @@ prepare <- function(df) {
     single <- subset(df, df$TICK <= tick)
 
     if (is.null(args$proj_group)) {
-      cols <- c('RUN', 'proj_group', 'interventions_tot_size')
-    } else {
       cols <- c('RUN', 'interventions_tot_size')
+    } else {
+      cols <- c('RUN', 'proj_group', 'interventions_tot_size')
     }
     single <- ddply(single,
                     cols,
