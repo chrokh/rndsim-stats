@@ -122,9 +122,9 @@ plot(
                  df$proj_stage_group
                  ),
      df$mean_proj_spend,
-     main  = paste('Mean cumulative grants/capital costs split per run and stage', args$label),
+     main  = paste('Cumulative mean grants/capital costs split per run and stage', args$label),
      xlab = '',
-     ylab = 'Mean cumulative costs paid with either grants or own capital',
+     ylab = 'Mean cumulative grants/capital',
      ylim = buildLim(NULL, args$ylim),
      las  = 2,
      )
