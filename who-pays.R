@@ -134,6 +134,6 @@ boxcolors  <- rep(head(c('red', 'green', 'blue', 'yellow'), 4), 4)
 boxplot(df$amount ~ df$spender,
         boxfill = boxcolors,
         las = 2,
-        main = 'Who pays for projects?',
+        main = paste('Who pays for projects (that reach market)?', args$label),
         ylab = 'Total spend per run'
         )
