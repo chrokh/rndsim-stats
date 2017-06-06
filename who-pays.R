@@ -153,5 +153,6 @@ boxplot(df$amount ~ df$spender,
         boxfill = boxcolors,
         las = 2,
         main = title,
-        ylab = 'Total spend per run'
+        ylab = 'Total spend per run',
+        ylim = buildLim(NULL, args$ylim)
         )
