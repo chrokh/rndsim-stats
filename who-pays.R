@@ -26,6 +26,11 @@ args <-
                              help    = 'dataset identifier [default= %default]',
                              metavar = 'character'),
                  make_option(
+                             c('--only_entries'),
+                             default = FALSE,
+                             help    = 'subset on projects that reached market [default= %default]',
+                             metavar = 'bool'),
+                 make_option(
                              c('--ylimit'),
                              default = NULL,
                              help    = 'ylim max of plot [default= %default]',
@@ -45,8 +50,10 @@ minus <- function(a, b) {
 
 prepare <- function(df) {
 
-  print('Subsetting on only reached market')
-  df <- only_reached_market(df)
+  if (args$only_entries) {
+    print('Subsetting on only reached market')
+    df <- only_reached_market(df)
+  }
 
   print('Identifying vc spend')
   df$vc_spent <- ifelse(
@@ -91,9 +98,15 @@ prepare <- function(df) {
   return(df)
 }
 
+if (args$only_entries) {
+  cache <- 'who-pays-for-entries.csv'
+} else {
+  cache <- 'who-pays.csv'
+}
+
 df <- getSet(args$input,
              args$cache,
-             'who-pays.csv',
+             cache,
              prepare,
              c('RUN',
                'PROJ',
@@ -131,9 +144,14 @@ grp4$spender <- 'Partners'
 df <- rbind(grp1, grp2, grp3, grp4)
 
 boxcolors  <- rep(head(c('red', 'green', 'blue', 'yellow'), 4), 4)
+if (args$only_entries) {
+  title <- paste('Who pays for projects (that reach market)?', args$label)
+} else {
+  title <- paste('Who pays for projects?', args$label)
+}
 boxplot(df$amount ~ df$spender,
         boxfill = boxcolors,
         las = 2,
-        main = paste('Who pays for projects (that reach market)?', args$label),
+        main = title,
         ylab = 'Total spend per run'
         )
