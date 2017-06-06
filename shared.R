@@ -91,6 +91,20 @@ factorizeStages <- function(stages) {
   )))
 }
 
+simplifyStages <- function(stages) {
+  return(revalue(stages,
+                 c(
+                   'PreClinical'  = 'PC',
+                   'Phase1'       = 'P1',
+                   'Phase2'       = 'P2',
+                   'Phase3'       = 'P3',
+                   'Approval'     = 'Ap',
+                   'MarketEntry'  = 'M1',
+                   'MarketUptake' = 'M2-10',
+                   'MarketPeak'   = 'M10+'
+                   )))
+}
+
 factorizeDevStages <- function(stages) {
   return(factor(stages, levels = c(
     'PreClinical',
