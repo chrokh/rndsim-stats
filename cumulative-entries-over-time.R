@@ -62,11 +62,7 @@ prepare <- function(df) {
     print(paste('Grouping tick', tick))
     single <- subset(df, df$TICK <= tick)
 
-    if (is.null(args$proj_group)) {
-      cols <- c('RUN', 'interventions_tot_size')
-    } else {
-      cols <- c('RUN', 'proj_group', 'interventions_tot_size')
-    }
+    cols <- c('RUN', 'proj_group', 'interventions_tot_size')
     single <- ddply(single,
                     cols,
                     summarise,
@@ -91,7 +87,14 @@ df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare
 plotToFile(args$output)
 
 if (!is.null(args$proj_group)) {
+  print('Subset on project group')
   df <- subset(df, df$proj_group == args$proj_group)
+} else {
+  print('Sum up entries over project groups')
+  df <- ddply(df,
+              c('RUN', 'interventions_tot_size', 'year'),
+              summarise,
+              num_pois = sum(num_pois))
 }
 
 df <- ddply(df, c('year', 'interventions_tot_size'),
