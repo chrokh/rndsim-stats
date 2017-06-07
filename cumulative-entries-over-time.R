@@ -29,6 +29,13 @@ args <-
                              c('--ylimit'),
                              default = NULL,
                              help    = 'ylim max of plot [default= %default]',
+                             type    = 'double',
+                             metavar = 'float'),
+                 make_option(
+                             c('--max_intervention'),
+                             default = NULL,
+                             help    = 'subset on interventions <= [default= %default]',
+                             type    = 'double',
                              metavar = 'float'),
                  make_option(
                              c('--proj_group'),
@@ -86,6 +93,7 @@ df <- getSet(args$input, args$cache, 'cumulative-entries-over-time.csv', prepare
 # ============================================
 plotToFile(args$output)
 
+
 if (!is.null(args$proj_group)) {
   print('Subset on project group')
   df <- subset(df, df$proj_group == args$proj_group)
@@ -96,6 +104,13 @@ if (!is.null(args$proj_group)) {
               summarise,
               num_pois = sum(num_pois))
 }
+
+
+if (!is.null(args$max_intervention)) {
+  print(paste('Subsetting on interventions below or equal to', args$max_intervention))
+  df <- subset(df, df$interventions_tot_size <= args$max_intervention)
+}
+
 
 df <- ddply(df, c('year', 'interventions_tot_size'),
             summarise,
