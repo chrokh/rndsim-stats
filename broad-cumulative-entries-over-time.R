@@ -1,0 +1,110 @@
+source('shared.R')
+
+
+# ARGUMENTS
+# ==================
+args <-
+  parseArgs(list(
+                 make_option(
+                             c('-i', '--input'),
+                             default =NULL,
+                             help    ='dataset file path',
+                             metavar ='file'),
+                 make_option(
+                             c('-o', '--output'),
+                             default ='plot.png',
+                             help    ='output file name [default= %default]',
+                             metavar ='file'),
+                 make_option(
+                             c('-c', '--cache'),
+                             default = '.',
+                             help    = 'cache folder [default= %default]',
+                             metavar = 'folder'),
+                 make_option(
+                             c('-l', '--label'),
+                             default = '',
+                             help    = 'dataset identifier [default= %default]',
+                             metavar = 'character'),
+                 make_option(
+                             c('--ylimit'),
+                             default = NULL,
+                             help    = 'ylim max of plot [default= %default]',
+                             type    = 'double',
+                             metavar = 'float')
+                 ),
+            function(args) !is.null(args$input))
+
+
+
+
+# CONFIG
+# ============================================
+generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
+
+
+
+# PREPARE
+# ============================================
+prepare <- function(df) {
+
+  # Cumulate entries per tick
+  all <- data.frame()
+  for (tick in unique(df$TICK)) {
+
+    print(paste('Grouping tick', tick))
+    single <- subset(df, df$TICK <= tick)
+
+    cols <- c('RUN', 'interventions_tot_size')
+    single <- ddply(single,
+                    cols,
+                    summarise,
+                    num_pois = countCompletes(proj_state))
+
+    single$year <- tick / 12
+    all <- rbind(all, single)
+  }
+
+  return(all)
+
+}
+cols <- c('RUN', 'TICK', 'proj_state', 'interventions_tot_size')
+df <- getSet(args$input, args$cache, 'broad-cumulative-entries-over-time.csv', prepare, cols)
+
+
+
+
+
+# PLOT
+# ============================================
+plotToFile(args$output)
+
+
+df <- ddply(df, c('year', 'interventions_tot_size'),
+            summarise,
+            mean_pois = mean(num_pois))
+
+interventions    <- unique(df$interventions_tot_size)
+numInterventions <- length(interventions)
+colorscale       <- generateColorscale(numInterventions)
+
+df$color  <- colorscale[findInterval(df$interventions_tot_size, interventions)]
+plot(df$mean_pois ~ df$year,
+     main = paste("Cumulative market entries (mean per run) per year", args$label),
+     col  = df$color,
+     pch  = 19,
+     xlab = "Year",
+     ylab = "Mean cumulative market entries",
+     xlim = c(min(df$year), max(df$year)),
+     ylim = buildLim(NULL, args$ylim),
+     xaxt="n"
+     )
+axis(1, at = seq(from = 0, to = (max(df$year)), by = 1))
+grid(nx = 0, ny = NULL, col = 'darkgray', lty = 'dotted', equilogs = TRUE)
+legend('topleft', levels(factor(df$interventions_tot_size)), pch = 19, col = df$color, bty = 'n', title="Top")
+sub <- subset(df, df$year == max(df$year))
+text(sub$year, sub$mean_pois, sub$interventions_tot_size, cex=0.8, pos=4, font=2, col=sub$color)
+
+for (bin in interventions) {
+  sub <- subset(df, df$interventions_tot_size == bin)
+  lines(sub$mean_pois ~ sub$year, col = sub$color)
+}
