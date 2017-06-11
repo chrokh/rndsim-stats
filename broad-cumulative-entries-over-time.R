@@ -47,6 +47,9 @@ generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
 # ============================================
 prepare <- function(df) {
 
+  print('Subsetting on only full delinkage')
+  df <- subset(df, df$intervention == 'FDMER')
+
   # Cumulate entries per tick
   all <- data.frame()
   for (tick in unique(df$TICK)) {
@@ -67,7 +70,7 @@ prepare <- function(df) {
   return(all)
 
 }
-cols <- c('RUN', 'TICK', 'proj_state', 'interventions_tot_size')
+cols <- c('RUN', 'TICK', 'proj_state', 'intervention', 'interventions_tot_size')
 df <- getSet(args$input, args$cache, 'broad-cumulative-entries-over-time.csv', prepare, cols)
 
 
@@ -108,3 +111,5 @@ for (bin in interventions) {
   sub <- subset(df, df$interventions_tot_size == bin)
   lines(sub$mean_pois ~ sub$year, col = sub$color)
 }
+
+mtext('Only Full Delinkage')
