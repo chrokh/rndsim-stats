@@ -4,11 +4,15 @@ library('optparse')
 
 
 
+
 # ==================
 # Data frame transformations
 # ==================
 
 # Can be used as function in ddply
+countCompletes <- function(state) {
+  sum(ifelse(state == 'COMPLETED', 1, 0))
+}
 countEntries <- function(proj_is_at_poi) {
   sum(ifelse(proj_is_at_poi == 'true', 1, 0))
 }
@@ -32,6 +36,21 @@ groupBy <- function(df, cols) {
               ))
 }
 
+
+only_no_grants <- function(df) {
+  print(nrow(df))
+  df <- subset(df, df$grants_preclinical_frac == 0 | df$grants_preclinical_size == 0)
+  print(nrow(df))
+  df <- subset(df, df$grants_phase1_frac == 0 | df$grants_phase1_size == 0)
+  print(nrow(df))
+  df <- subset(df, df$grants_phase2_frac == 0 | df$grants_phase2_size == 0)
+  print(nrow(df))
+  df <- subset(df, df$grants_phase3_frac == 0 | df$grants_phase3_size == 0)
+  print(nrow(df))
+  df <- subset(df, df$grants_approval_frac == 0 | df$grants_approval_size == 0)
+  print(nrow(df))
+  return(df)
+}
 
 only_reached_market <- function(d) {
   projs <- subset(d, d$proj_is_at_poi == 'true')
@@ -158,8 +177,7 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
   } else {
     df <- load(input, cols)
 
-    print('Cleaning file')
-    df <- dropPartialRuns(df)
+    print('WARN: Not dropping partial runs')
 
     print('Applying pre-processing')
     df <- fun(df)
@@ -202,4 +220,8 @@ buildLim <- function(lo, hi) {
   } else {
     return(c(0, round(as.numeric(hi))))
   }
+}
+
+roundToNearest <- function(x, base){
+  return(base * round(x / base))
 }
