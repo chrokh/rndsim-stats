@@ -13,6 +13,9 @@ library('optparse')
 countCompletes <- function(state) {
   sum(ifelse(state == 'COMPLETED', 1, 0))
 }
+meanCompletes <- function(state) {
+  mean(ifelse(state == 'COMPLETED', 1, 0))
+}
 countEntries <- function(proj_is_at_poi) {
   sum(ifelse(proj_is_at_poi == 'true', 1, 0))
 }
@@ -88,6 +91,7 @@ binInterventions <- function(df, bins) {
 dropPartialRuns <- function(df) {
   # TODO: Actually drops last, but should drop partials
   if('RUN' %in% colnames(df)) {
+    print('WARN: I don\'t know how to drop partial runs... Dropping last run at least.')
     top <- max(df$RUN)
     return(subset(df, df$RUN != top))
   } else {
@@ -177,7 +181,8 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
   } else {
     df <- load(input, cols)
 
-    print('WARN: Not dropping partial runs')
+    print('Dropping partial runs')
+    df <- dropPartialRuns(df)
 
     print('Applying pre-processing')
     df <- fun(df)
@@ -199,17 +204,58 @@ ensurePathExists <- function(path) {
   }
 }
 
-plotToFile <- function(path) {
+plotToFile <- function(path, a4like = FALSE) {
   ensurePathExists(path)
   print(paste('Will plot to', path))
   if (grepl('\\.pdf', path)) {
-    pdf(path, width = 9, height = 7)
+    if (a4like) {
+      pdf(path, width = 9, height = 12)
+    } else {
+      pdf(path, width = 9, height = 7)
+    }
+  } else {
+    if (a4like) {
+      png(path, width = 2480,
+          height = 3508,
+          units = 'px',
+          res = 300
+          )
+    } else {
+      png(path, width = 2400,
+          height = 1800,
+          units = 'px',
+          res = 220
+          )
+    }
+  }
+}
+
+plotToPortrait <- function(path) {
+  ensurePathExists(path)
+  print(paste('Will plot to', path))
+  if (grepl('\\.pdf', path)) {
+    pdf(path, width = 9, height = 12)
   } else {
     png(path,
-        width = 2400,
-        height = 1800,
+        width = 2480,
+        height = 3508,
         units = 'px',
-        res = 220
+        res = 300
+        )
+  }
+}
+
+plotToLandscape <- function(path) {
+  ensurePathExists(path)
+  print(paste('Will plot to', path))
+  if (grepl('\\.pdf', path)) {
+    pdf(path, height = 9, width = 12)
+  } else {
+    png(path,
+        height = 2480,
+        width = 3508,
+        units = 'px',
+        res = 300
         )
   }
 }
