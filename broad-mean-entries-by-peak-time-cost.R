@@ -33,6 +33,9 @@ args <-
 # ============================================
 prepare <- function(df) {
 
+  print('Subset away extremely high peaks')
+  df <- subset(df, df$proj_peak_cash <= 85)
+
   print('Round project costs')
   df$cost <- roundToNearest(df$proj_tot_cost, 25)
 
@@ -41,6 +44,9 @@ prepare <- function(df) {
 
   print('Round project peak year sales')
   df$peak <- roundToNearest(df$proj_peak_cash, 5)
+
+  print('Multiply peak by 12 so we display peak year rather than peak month')
+  df$peak <- df$peak * 12
 
   print('Counting entries intervention size and peak')
   df <- ddply(df,
@@ -72,7 +78,6 @@ df <- getSet(args$input,
 # PLOT
 # ============================================
 plotToFile(args$output, TRUE)
-
 
 findMeans <- function(df) {
   df <- ddply(df, c('peak', 'interventions_tot_size'), summarise,
