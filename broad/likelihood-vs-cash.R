@@ -127,7 +127,7 @@ pdNoGrants <- subset(pd, pd$grants_tot_size == 0)
 
 
 fd         <- findMeans(fd)
-pd         <- findMeans(fd)
+pd         <- findMeans(pd)
 fdNoGrants <- findMeans(fdNoGrants)
 pdNoGrants <- findMeans(pdNoGrants)
 fdGrants   <- findMeans(fdGrants)
