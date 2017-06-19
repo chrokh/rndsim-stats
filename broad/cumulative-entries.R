@@ -149,21 +149,23 @@ layout(matrix(c(1,2,3,4,5,6,7,8), nrow = 4, byrow = FALSE))
 
 
 # Cutoff points for subsetting
-cutCash   <- 5000
 cutThresh <- 500
 cutRate   <- 24
 
 # Subset using cutoffs
+print('Create FD subsets')
 sub1 <- subset(df, df$intervention == 'FDMER')
-sub2 <- subset(sub1, sub1$cash <= cutCash)
-sub3 <- subset(sub1, sub1$thresh >= cutThresh & sub1$rate >= cutRate)
-sub4 <- subset(sub1, sub1$cash <= cutCash & sub1$thresh >= cutThresh & sub1$rate >= cutRate)
+sub2 <- subset(sub1, sub1$thresh >= cutThresh)
+sub3 <- subset(sub1, sub1$rate >= cutRate)
+sub4 <- subset(sub1, sub1$thresh >= cutThresh & sub1$rate >= cutRate)
+print('Create PD subsets')
 sub5 <- subset(df, df$intervention == 'PDMER')
-sub6 <- subset(sub5, sub5$cash <= cutCash)
-sub7 <- subset(sub5, sub5$thresh >= cutThresh & sub5$rate >= cutRate)
-sub8 <- subset(sub5, sub5$cash <= cutCash & sub5$thresh >= cutThresh & sub5$rate >= cutRate)
+sub6 <- subset(sub5, sub5$thresh >= cutThresh)
+sub7 <- subset(sub5, sub5$rate >= cutRate)
+sub8 <- subset(sub5, sub5$thresh >= cutThresh & sub5$rate >= cutRate)
 
 # Prepare for plotting
+print('Count entries in subsets')
 sub1 <- prepareSubset(sub1)
 sub2 <- prepareSubset(sub2)
 sub3 <- prepareSubset(sub3)
@@ -178,15 +180,14 @@ all <- rbind(sub1, sub2, sub3, sub4, sub5, sub6, sub7, sub8)
 
 # Plot
 title <- '(FD)'
-plotSubset(sub1, all, paste('All Observations', title))
-plotSubset(sub2, all, paste('Revenus <= 5B', title))
-plotSubset(sub3, all, paste('Threshold >= 500M + DR >= 24%', title))
-plotSubset(sub4, all, paste('Revenues + Threshold + DR', title))
-title <- '(PD)'
-plotSubset(sub5, all, paste('All Observations', title))
-plotSubset(sub6, all, paste('Revenus <= 5B', title))
-plotSubset(sub7, all, paste('Threshold >= 500M + DR >= 24%', title))
-plotSubset(sub8, all, paste('Revenues + Threshold + DR', title))
+plotSubset(sub1, all, 'All Observations (FD)')
+plotSubset(sub2, all, 'Threshold >= 500M (FD)')
+plotSubset(sub3, all, 'Discount Rate >= 24% (FD)')
+plotSubset(sub4, all, 'Threshold + Discount Rate (FD)')
+plotSubset(sub5, all, 'All Observations (PD)')
+plotSubset(sub6, all, 'Threshold >= 500M (PD)')
+plotSubset(sub7, all, 'Discount Rate >= 24% (PD)')
+plotSubset(sub8, all, 'Threshold + Discount Rate (PD)')
 
-
+# Print top title
 mtext('Cumulative Mean Entries Per Run', outer=TRUE,  cex=1, line=-2)
