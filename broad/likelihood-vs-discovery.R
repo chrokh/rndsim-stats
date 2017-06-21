@@ -77,7 +77,7 @@ findMeans <- function(df) {
   return(df)
 }
 
-doPlot <- function(df, name) {
+doPlot <- function(df, context, name) {
 
   generateColorscale <- colorRampPalette(c('red', 'orange', 'green'))
   interventions    <- sort(unique(df$interventions_tot_size))
@@ -87,13 +87,22 @@ doPlot <- function(df, name) {
 
   plot(
        df$mean_pois ~ df$rate,
-       #col  = df$color,
-       col  = 'white',
+       col  = df$color,
+       #col  = 'white',
        pch  = 19,
-       xlab = paste('Total Entry Rate ( \u00B1', binSize / 2, ')'),
+       xlab = paste('Total Monthly Entry Rate ( \u00B1', binSize / 2, ')'),
        ylab = 'Mean Likelihood of Entry (%)',
-       ylim = c(bot, top)
+       xaxt = 'n',
+       yaxt = 'n',
+       ylim = c(min(context$mean_pois), max(context$mean_pois))
        )
+
+  # Ticks and grid
+  xticks <- seq(round(min(context$rate)), round(max(context$rate)), by = 1)
+  yticks <- seq(round(min(context$mean_pois)), round(max(context$mean_pois)), by = 0.25)
+  axis(side=1, col='black',  at = xticks)
+  axis(side=2, col='black', las = 2, at = yticks)
+  abline(h=yticks, v=xticks, col="gray", lty=3)
 
   for (bin in interventions) {
     sub <- subset(df, df$interventions_tot_size == bin)
@@ -136,16 +145,12 @@ pdGrants   <- findMeans(pdGrants)
 
 all <- rbind(fd, pd, fdGrants, pdGrants, fdNoGrants, pdNoGrants)
 
-top <- max(all$mean_pois)
-bot <- min(all$mean_pois)
-
-
-doPlot(fd, 'Full Delinkage')
-doPlot(pd, 'Partial Delinkage')
-doPlot(fdGrants, 'Full Delinkage + Grants')
-doPlot(pdGrants, 'Partial Delinkage + Grants')
-doPlot(fdNoGrants, 'Full Delinkage + No Grants')
-doPlot(pdNoGrants, 'Partial Delinkage + No Grants')
+doPlot(fd, all, 'Full Delinkage')
+doPlot(pd, all, 'Partial Delinkage')
+doPlot(fdGrants, all, 'Full Delinkage + Grants')
+doPlot(pdGrants, all, 'Partial Delinkage + Grants')
+doPlot(fdNoGrants, all, 'Full Delinkage + No Grants')
+doPlot(pdNoGrants, all, 'Partial Delinkage + No Grants')
 
 mtext('Likelihood of Entry Per Entry Rate', outer=TRUE,  cex=1, line=-2)
 mtext('X >= 1', outer=TRUE,  cex=1, line=-2, side=1)
