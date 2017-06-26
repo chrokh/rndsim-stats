@@ -89,8 +89,15 @@ df <- getSet(args$input,
 
 prepareSet <- function(df) {
 
+  months <- 23 * 12
+
+  print('Recompute entry rate')
+  df$discovery <- df$projs / months
+
+  df$discovery <- roundToNearest(df$discovery, binSize)
+
   print('Estimate number of market entries')
-  df$poi_estimate <- df$tot_pois / df$projs * df$discovery * 29 * 12
+  df$poi_estimate <- df$tot_pois / df$projs * df$discovery * months
 
   print('Group by discovery rate')
   df <- ddply(df, c(
@@ -131,12 +138,21 @@ plotSet <- function(df, context) {
           col = sub$color)
   }
 
+  # Ticks
   xticks <- seq(round(min(context$discovery)), round(max(context$discovery)), by = 1)
-  yticks <- seq(round(min(context$pois)), round(max(context$pois)), by = 10)
+  yticks <- seq(roundToNearest(min(context$pois), 10), roundToNearest(max(df$pois), 10), by = 10)
   axis(side=1, col='black',  at = xticks)
   axis(side=2, col='black', las = 2, at = yticks)
 
-  abline(h=yticks, v=xticks, col="gray", lty=3)
+  # Minor grid
+  xticks <- seq(round(min(context$discovery)), round(max(context$discovery)), by = 2)
+  yticks <- seq(roundToNearest(min(context$pois), 10), roundToNearest(max(df$pois), 10), by = 20)
+  abline(h=yticks, v=xticks, col='gray', lty=3)
+
+  # Major grid
+  xticks <- seq(round(min(context$discovery)) + 1, round(max(context$discovery)), by = 2)
+  yticks <- seq(roundToNearest(min(context$pois), 10) + 10, roundToNearest(max(df$pois), 10), by = 20)
+  abline(h=yticks, v=xticks, col='gray')
 
   legend('topleft', levels(factor(df$intervention_size)),
          pch = 19, col = df$color, bty = 'n', title='Intervention',
