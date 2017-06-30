@@ -175,6 +175,10 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
   memory.limit(size=17000000000000)
 
   path <- file.path(cache_folder, cache_name)
+  if (is.null(cache_folder)) {
+    path <- cache_name
+  }
+
   if (file.exists(path)) {
     print(paste('Reading cache'))
     df <- load(path)
