@@ -13,6 +13,11 @@ library('optparse')
 countCompletes <- function(state) {
   sum(ifelse(state == 'COMPLETED', 1, 0))
 }
+countInStage <- function(target_stage) {
+  return(function(current_stage) {
+           sum(ifelse(current_stage == target_stage, 1, 0))
+})
+}
 meanCompletes <- function(state) {
   mean(ifelse(state == 'COMPLETED', 1, 0))
 }

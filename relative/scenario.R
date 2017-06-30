@@ -44,6 +44,8 @@ prepare <- function(df) {
                     'intervention',
                     'intervention_size'
                     ), summarise,
+              p1s   = countInStage('Phase1')(proj_stage_group),
+              p2s   = countInStage('Phase2')(proj_stage_group),
               pois  = countCompletes(proj_state),
               projs = length(unique(PROJ))
               )
@@ -60,6 +62,7 @@ df <- getSet(args$input,
                'grants_avg_frac',
                'intervention',
                'interventions_tot_size',
+               'proj_stage_group',
                'proj_state'
                ))
 
@@ -268,14 +271,20 @@ plot3 <- function(df) {
 plot4 <- function(df, heatMapColors, name) {
 
   df <- ddply(df, c('intervention_size', 'grants'), summarise,
+              p1s   = sum(p1s),
+              p2s   = sum(p2s),
               projs = sum(projs),
               pois  = sum(pois))
 
-  print('Recomputing market entries to %')
+  print('Recomputing entries to %')
   df$pois <- df$pois / df$projs * 100
+  df$p1s <- df$pois / df$projs * 100
+  df$p2s <- df$pois / df$projs * 100
 
   print('Reformat from long to wide')
   tbl <- xtabs(pois ~ intervention_size + grants, df)
+  tblP1s <- xtabs(p1s ~ intervention_size + grants, df)
+  tblP2s <- xtabs(p2s ~ intervention_size + grants, df)
 
   legendNumColors <- 12
   legendColors <- heatMapColors(legendNumColors)
@@ -301,6 +310,10 @@ plot4 <- function(df, heatMapColors, name) {
         frame.plot = FALSE
         )
 
+  # Convinience
+  sizes  = sort(unique(df$intervention_size))
+  grants = sort(unique(df$grants))
+
   # Print value on every tile on tile
   numXs <- length(unique(df$intervention_size))
   numYs <- length(unique(df$grants))
@@ -308,15 +321,54 @@ plot4 <- function(df, heatMapColors, name) {
   yBinSize <- 1/(numYs-1)
   xs <- seq(from=0, to=1, by=xBinSize)
   ys <- seq(from=0, to=1, by=yBinSize)
+
   mat <- as.matrix(tbl)
   dimnames(mat) <- NULL
+  matP1 <- as.matrix(tblP1s)
+  dimnames(matP1) <- NULL
+  matP2 <- as.matrix(tblP2s)
+  dimnames(matP2) <- NULL
 
   xIndex <- 1
   for (x in xs) {
     yIndex <- 1
     for (y in ys) {
-      val = round(mat[xIndex, yIndex], 1)
-      text(x, y, val, cex = 0.8)
+
+      # Extract likelihood of market entry
+      likelihood = mat[xIndex, yIndex] / 100
+      percentage = round(likelihood * 100, 1)
+
+      # Calculate pull spend
+      size = sizes[xIndex]
+      pullSpend = likelihood * size
+
+      # Extract likelihood of PC, P1, P2 entry
+      likelihoodPC = 1
+      likelihoodP1 = mat[xIndex, yIndex] / 100
+      likelihoodP2 = mat[xIndex, yIndex] / 100
+
+      # Setup average phase grant costs
+      costPC = 21.1
+      costP1 = 24
+      costP2 = 24.55
+
+      # Calculate push spend
+      frac = grants[yIndex]
+      pushSpend =
+        likelihoodPC * costPC * frac +
+        likelihoodP1 * costP1 * frac +
+        likelihoodP2 * costP2 * frac
+
+      # Print total spend
+      cost = round(pullSpend + pushSpend, 1)
+      offset = - 1 / length(ys) / 3.5 # offset downwards slightly
+      text(x, y + offset, cost, cex = 0.7)
+
+      # Print likelihood of entry
+      offset = 1 / length(ys) / 7 # offset upwards slightly
+      text(x, y + offset, percentage, cex = 0.9)
+
+
       yIndex = yIndex + 1
     }
     xIndex = xIndex + 1
@@ -335,6 +387,15 @@ plot4 <- function(df, heatMapColors, name) {
   nSizes <- length(sizes)
   axis(2,
        at = seq(from=0, to=1, by=(1/(nSizes-1))), labels=sizes,
+       lwd = 1,
+       las = 2)
+
+  # y axis (grant size estimation per project)
+  sizes  <- sort(unique(round(df$grants * (costPC + costP1 + costP2))))
+  nSizes <- length(sizes)
+  axis(4,
+       at = seq(from=0, to=1, by=(1/(nSizes-1))),
+       labels=sizes,
        lwd = 1,
        las = 2)
 
