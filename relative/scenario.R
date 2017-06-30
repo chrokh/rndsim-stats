@@ -278,8 +278,8 @@ plot4 <- function(df, heatMapColors, name) {
 
   print('Recomputing entries to %')
   df$pois <- df$pois / df$projs * 100
-  df$p1s <- df$pois / df$projs * 100
-  df$p2s <- df$pois / df$projs * 100
+  df$p1s <- df$p1s / df$projs * 100
+  df$p2s <- df$p2s / df$projs * 100
 
   print('Reformat from long to wide')
   tbl <- xtabs(pois ~ intervention_size + grants, df)
@@ -344,8 +344,8 @@ plot4 <- function(df, heatMapColors, name) {
 
       # Extract likelihood of PC, P1, P2 entry
       likelihoodPC = 1
-      likelihoodP1 = mat[xIndex, yIndex] / 100
-      likelihoodP2 = mat[xIndex, yIndex] / 100
+      likelihoodP1 = matP1[xIndex, yIndex] / 100
+      likelihoodP2 = matP2[xIndex, yIndex] / 100
 
       # Setup average phase grant costs
       costPC = 21.1
