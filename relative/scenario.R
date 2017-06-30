@@ -106,6 +106,7 @@ plot1 <- function(df) {
        xlab    = 'Pull (million $)',
        las     = 2,
        main    = '',
+       ylim    = c(0, 6.5), # TODO: hard-coded
        frame.plot = FALSE
        )
 
