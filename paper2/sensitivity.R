@@ -159,18 +159,25 @@ prepare <- function(col, binSize=NULL) {
     df <<- loadIfNull(df)
     gc()
 
-    print('Round x variable')
+    print(paste('Rename', col, 'to x'))
+    names(df)[names(df) == col] <- 'x'
+
+    print('Round x')
     if (!is.null(binSize)) {
-      df$x <- roundToNearest(df[[col]], binSize)
-    } else {
-      df$x <- df[[col]]
+      df$x <- roundToNearest(df$x, binSize)
     }
     gc()
 
     print('Counting entries per group')
-    ddply(df, c('intervention', 'intervention_size', 'x'), summarise,
+    sub <- ddply(df, c('intervention', 'intervention_size', 'x'), summarise,
           pois   = countCompletes(proj_state),
           projs  = length(unique(PROJ)))
+
+    print(paste('Rename back x to', col))
+    names(df)[names(df) == 'x'] <- col
+    df <<- df
+
+    return(sub)
   }
 }
 
@@ -209,19 +216,21 @@ df.cost   <- subset(df.cost, df.cost$x >= 190 & df.cost$x <= 340)
 df.prob   <- subset(df.prob, df.prob$x <= 0.15)
 
 
-print('Prepare subsets for plotting')
+print('Prepare FD+PD subsets for plotting')
 df.both.cash   <- findMeans(df.cash)
 df.both.cost   <- findMeans(df.cost)
 df.both.prob   <- findMeans(df.prob)
 df.both.rate   <- findMeans(df.rate)
 df.both.thresh <- findMeans(df.thresh)
 
+print('Prepare FD subsets for plotting')
 df.fd.cash   <- findMeans(subset(df.cash,   df.cash$intervention == 'FDMER'))
 df.fd.cost   <- findMeans(subset(df.cost,   df.cost$intervention == 'FDMER'))
 df.fd.prob   <- findMeans(subset(df.prob,   df.prob$intervention == 'FDMER'))
 df.fd.rate   <- findMeans(subset(df.rate,   df.rate$intervention == 'FDMER'))
 df.fd.thresh <- findMeans(subset(df.thresh, df.thresh$intervention == 'FDMER'))
 
+print('Prepare PD subsets for plotting')
 df.pd.cash   <- findMeans(subset(df.cash,   df.cash$intervention == 'PDMER'))
 df.pd.cost   <- findMeans(subset(df.cost,   df.cost$intervention == 'PDMER'))
 df.pd.prob   <- findMeans(subset(df.prob,   df.prob$intervention == 'PDMER'))
