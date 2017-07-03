@@ -176,6 +176,7 @@ load <- function(path, cols = NULL) {
 
 getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
   # Set max memory limit
+  print('Increasing memory limit')
   memory.size(max=TRUE)
   memory.limit(size=17000000000000)
 
@@ -263,6 +264,21 @@ plotToLandscape <- function(path) {
     png(path,
         height = 2480,
         width = 3508,
+        units = 'px',
+        res = 300
+        )
+  }
+}
+
+plotToSmallLandscape <- function(path) {
+  ensurePathExists(path)
+  print(paste('Will plot to', path))
+  if (grepl('\\.pdf', path)) {
+    pdf(path, height = 5, width = 9)
+  } else {
+    png(path,
+        height = 1000,
+        width = 1500,
         units = 'px',
         res = 300
         )
