@@ -33,96 +33,60 @@ args <-
 
 
 
-# PREPARE
+# BIN CONFIG
 # ============================================
 binSize.cash <- 500
 binSize.cost <- 10
-binSize.prob <- 1.5
-binSize.rate <- 2
-prepare <- function(df) {
-
-  print('Rename parameters')
-  names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
-  names(df)[names(df) == 'proj_tot_cash']          <- 'cash'
-  names(df)[names(df) == 'proj_tot_cost']          <- 'cost'
-  names(df)[names(df) == 'proj_tot_prob']          <- 'prob'
-  names(df)[names(df) == 'orgs_infcap_thresh']     <- 'thresh'
-  names(df)[names(df) == 'inv_rate']               <- 'rate'
-
-  print('Round project revenues')
-  df$cash <- roundToNearest(df$cash, binSize.cash)
-
-  print('Round project cost')
-  df$cost <- roundToNearest(df$cost, binSize.cost)
-
-  print('Round project probability')
-  df$prob <- roundToNearest(df$prob * 100, binSize.prob)
-
-  print('Round investor rates')
-  df$rate <- roundToNearest(df$rate * 100, binSize.rate)
-
-  print('Counting entries per group')
-  df <- ddply(df,
-              c(
-                'intervention',
-                'intervention_size',
-                'cash',
-                'cost',
-                'prob',
-                'rate',
-                'thresh'
-                ),
-              summarise,
-              pois   = countCompletes(proj_state),
-              projs  = length(unique(PROJ)))
-
-  return(df)
-}
-df <- getSet(args$input,
-             args$cache,
-             'sensitivity.csv',
-             prepare,
-             c('RUN',
-               'PROJ',
-               'intervention',
-               'interventions_tot_size',
-               'proj_state',
-               'proj_tot_cash',
-               'proj_tot_cost',
-               'proj_tot_prob',
-               'inv_rate',
-               'orgs_infcap_thresh'
-               ))
+binSize.prob <- 0.015
+binSize.rate <- 0.02
 
 
 
 
 
-
-
-
-# REVENUE
+# ONLY READ FILE ONCE BY CALLING THIS FUNCTION
 # ============================================
+loadIfNull <- function(df) {
+  if (is.null(df)) {
+    print('Does not have file in memory. Reading.')
+    df <- load(args$input,
+               c('RUN',
+                 'PROJ',
+                 'intervention',
+                 'interventions_tot_size',
+                 'proj_state',
+                 'proj_tot_cash',
+                 'proj_tot_cost',
+                 'proj_tot_prob',
+                 'inv_rate',
+                 'orgs_infcap_thresh'
+                 ))
 
-findMeans <- function(df = NULL, x = NULL) {
+    print('Rename parameters')
+    names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
 
-  df <- ddply(df, c(x, 'intervention_size'), summarise,
-               pois  = sum(pois),
-               projs = sum(projs))
-  df$pois <- df$pois / df$projs * 100
-
-  print(paste('Finding means for', x))
-  names(df)[names(df) == x] <- 'x'
-
-  return(df)
+    df
+  } else {
+    print('Has file in memory. Returning')
+    df
+  }
 }
+df <- NULL
 
+
+
+
+
+
+# PLOTTING FUNCTION
+# ============================================
 plotSensitivity <- function(
                             df      = NULL,
                             x       = NULL,
                             context = NULL,
                             xlab    = NULL,
-                            binSize = NULL
+                            binSize = NULL,
+                            xIsPercentage = FALSE
                             ) {
 
   # Convinience
@@ -131,6 +95,11 @@ plotSensitivity <- function(
   # Prepare colors
   colors   <- colorRampPalette(c('red', 'orange', 'green'))(length(interventions))
   df$color <- colors[as.numeric(as.factor(df$intervention_size))]
+
+  if (xIsPercentage) {
+    df$x <- df$x * 100
+    binSize = binSize * 100
+  }
 
   if (!is.null(binSize)) {
     xlab = paste(xlab, '( \u00B1', binSize / 2, ')')
@@ -179,45 +148,94 @@ plotSensitivity <- function(
 
 
 
+
+# ============================================
+# READ OR WRITE RESTRUCTURED DATA FROM CACHE
+# ============================================
+prepare <- function(col, binSize=NULL) {
+  function() {
+    print(paste('Preparing', col))
+    gc()
+    df <<- loadIfNull(df)
+    gc()
+
+    print('Round x variable')
+    if (!is.null(binSize)) {
+      df$x <- roundToNearest(df[[col]], binSize)
+    } else {
+      df$x <- df[[col]]
+    }
+    gc()
+
+    print('Counting entries per group')
+    ddply(df, c('intervention', 'intervention_size', 'x'), summarise,
+          pois   = countCompletes(proj_state),
+          projs  = length(unique(PROJ)))
+  }
+}
+
+df.cash   <- simpleGetSet(args$cache, 'sensitivity-cash.csv',   prepare('proj_tot_cash',      binSize.cash))
+df.cost   <- simpleGetSet(args$cache, 'sensitivity-cost.csv',   prepare('proj_tot_cost',      binSize.cost))
+df.prob   <- simpleGetSet(args$cache, 'sensitivity-prob.csv',   prepare('proj_tot_prob',      binSize.prob))
+df.rate   <- simpleGetSet(args$cache, 'sensitivity-rate.csv',   prepare('inv_rate',           binSize.rate))
+df.thresh <- simpleGetSet(args$cache, 'sensitivity-thresh.csv', prepare('orgs_infcap_thresh', NULL))
+
+
+
+
+
 # ============================================
 # PLOTS
 # ============================================
+gc()
+
+# Output path making function
 makePath <- function(name) { paste(args$output, '/', name, '.', args$format, sep='') }
 
+# Mean finding function
+findMeans <- function(df) {
+  print('Recomputing means')
+  df <- ddply(df, c('x', 'intervention_size'), summarise,
+               pois  = sum(pois),
+               projs = sum(projs))
+  df$pois <- df$pois / df$projs * 100
+  df
+}
 
-# Subset away extreme values
-df <- subset(df, df$cash <= 4000)
-df <- subset(df, df$cost >= 190 & df$cost <= 340)
-df <- subset(df, df$prob <= 15)
 
-# Prepare subsets for plotting
-df.cash   <- findMeans(df, 'cash')
-df.cost   <- findMeans(df, 'cost')
-df.prob   <- findMeans(df, 'prob')
-df.rate   <- findMeans(df, 'rate')
-df.thresh <- findMeans(df, 'thresh')
-# Prepare fd subsets
-df.fd <- subset(df, df$intervention == 'FDMER')
-df.fd.cash   <- findMeans(df.fd, 'cash')
-df.fd.cost   <- findMeans(df.fd, 'cost')
-df.fd.prob   <- findMeans(df.fd, 'prob')
-df.fd.rate   <- findMeans(df.fd, 'rate')
-df.fd.thresh <- findMeans(df.fd, 'thresh')
-# Prepare pd subsets
-df.pd <- subset(df, df$intervention == 'PDMER')
-df.pd.cash   <- findMeans(df.pd, 'cash')
-df.pd.cost   <- findMeans(df.pd, 'cost')
-df.pd.prob   <- findMeans(df.pd, 'prob')
-df.pd.rate   <- findMeans(df.pd, 'rate')
-df.pd.thresh <- findMeans(df.pd, 'thresh')
+print('Subsetting away extreme values')
+df.cash   <- subset(df.cash, df.cash$x <= 4000)
+df.cost   <- subset(df.cost, df.cost$x >= 190 & df.cost$x <= 340)
+df.prob   <- subset(df.prob, df.prob$x <= 0.15)
 
-# Collate subsets for plotting context
+
+print('Prepare subsets for plotting')
+df.both.cash   <- findMeans(df.cash)
+df.both.cost   <- findMeans(df.cost)
+df.both.prob   <- findMeans(df.prob)
+df.both.rate   <- findMeans(df.rate)
+df.both.thresh <- findMeans(df.thresh)
+
+df.fd.cash   <- findMeans(subset(df.cash,   df.cash$intervention == 'FDMER'))
+df.fd.cost   <- findMeans(subset(df.cost,   df.cost$intervention == 'FDMER'))
+df.fd.prob   <- findMeans(subset(df.prob,   df.prob$intervention == 'FDMER'))
+df.fd.rate   <- findMeans(subset(df.rate,   df.rate$intervention == 'FDMER'))
+df.fd.thresh <- findMeans(subset(df.thresh, df.thresh$intervention == 'FDMER'))
+
+df.pd.cash   <- findMeans(subset(df.cash,   df.cash$intervention == 'PDMER'))
+df.pd.cost   <- findMeans(subset(df.cost,   df.cost$intervention == 'PDMER'))
+df.pd.prob   <- findMeans(subset(df.prob,   df.prob$intervention == 'PDMER'))
+df.pd.rate   <- findMeans(subset(df.rate,   df.rate$intervention == 'PDMER'))
+df.pd.thresh <- findMeans(subset(df.thresh, df.thresh$intervention == 'PDMER'))
+
+
+print('Collate subsets for plotting context')
 df.all <- rbind(
-                df.cash,
-                df.cost,
-                df.prob,
-                df.rate,
-                df.thresh,
+                df.both.cash,
+                df.both.cost,
+                df.both.prob,
+                df.both.rate,
+                df.both.thresh,
 
                 df.fd.cash,
                 df.fd.cost,
@@ -233,28 +251,35 @@ df.all <- rbind(
                 )
 
 
-doPlot <- function(name, df, context, binSize, xlab) {
+# Plotting function
+doPlot <- function(name, df, context, binSize, xlab, xIsPercentage=FALSE) {
   plotToFile(makePath(name))
-  plotSensitivity(df=df, context=df, binSize=binSize, xlab=xlab)
+  plotSensitivity(df=df, context=df, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage)
 
   plotToFile(makePath(paste('ylim-', name, sep='')))
-  plotSensitivity(df=df, context=df.all, binSize=binSize, xlab=xlab)
+  plotSensitivity(df=df, context=df.all, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage)
 }
 
+
 # Plot
-doPlot('all-cash', df.cash, df.all, binSize.cash, 'Total Projected Revenues (mUSD)')
-doPlot('all-cost', df.cost, df.all, binSize.cost, 'Total Projected Costs (mUSD)')
-doPlot('all-prob', df.prob, df.all, binSize.prob, 'Total Projected Probability of Success (%)')
-doPlot('all-rate', df.rate, df.all, binSize.rate, 'Venture Capital Discount Rate (%)')
-doPlot('all-thresh', df.thresh, df.all, NULL, 'Big Pharma Threshold (mUSD)')
+doPlot('all-cash',    df.both.cash,    df.all,  binSize.cash,  'Total Projected Revenues (mUSD)')
+doPlot('all-cost',    df.both.cost,    df.all,  binSize.cost,  'Total Projected Costs (mUSD)')
+doPlot('all-prob',    df.both.prob,    df.all,  binSize.prob,  'Total Projected Probability of Success (%)')
+doPlot('all-rate',    df.both.rate,    df.all,  binSize.rate,  'Venture Capital Discount Rate (%)')
+doPlot('all-thresh',  df.both.thresh,  df.all,  NULL,          'Big Pharma Threshold (mUSD)')
 
 doPlot('fd-cash',    df.fd.cash,    df.all,  binSize.cash,  'Total Projected Revenues (mUSD)')
 doPlot('pd-cash',    df.pd.cash,    df.all,  binSize.cash,  'Total Projected Revenues (mUSD)')
+
 doPlot('fd-cost',    df.fd.cost,    df.all,  binSize.cost,  'Total Projected Costs (mUSD)')
 doPlot('pd-cost',    df.pd.cost,    df.all,  binSize.cost,  'Total Projected Costs (mUSD)')
+
 doPlot('fd-prob',    df.fd.prob,    df.all,  binSize.prob,  'Total Projected Probability of Successs (%)')
 doPlot('pd-prob',    df.pd.prob,    df.all,  binSize.prob,  'Total Projected Probability of Successs (%)')
+
 doPlot('fd-rate',    df.fd.rate,    df.all,  binSize.rate,  'Venture Capital Discount Rate (%)')
 doPlot('pd-rate',    df.pd.rate,    df.all,  binSize.rate,  'Venture Capital Discount Rate (%)')
+
 doPlot('fd-thresh',  df.fd.thresh,  df.all,  NULL,          'Big Pharma Threshold (mUSD)')
 doPlot('pd-thresh',  df.pd.thresh,  df.all,  NULL,          'Big Pharma Threshold (mUSD)')
+

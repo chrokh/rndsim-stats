@@ -3,6 +3,11 @@ library(plyr)
 library('optparse')
 
 
+# Set max memory limit
+print('Increasing memory limit')
+memory.size(max=TRUE)
+memory.limit(size=17000000000000)
+
 
 
 # ==================
@@ -175,11 +180,6 @@ load <- function(path, cols = NULL) {
 }
 
 getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
-  # Set max memory limit
-  print('Increasing memory limit')
-  memory.size(max=TRUE)
-  memory.limit(size=17000000000000)
-
   path <- file.path(cache_folder, cache_name)
   if (is.null(cache_folder)) {
     path <- cache_name
@@ -196,6 +196,23 @@ getSet <- function(input, cache_folder, cache_name, fun, cols = NULL) {
 
     print('Applying pre-processing')
     df <- fun(df)
+
+    print('Writing to cache')
+    ensurePathExists(path)
+    write.csv(file = path, x = df)
+  }
+  print('Got data')
+  return(df)
+}
+
+simpleGetSet <- function(cache_folder, cache_name, fun) {
+  path <- file.path(cache_folder, cache_name)
+  if (file.exists(path)) {
+    print(paste('Reading cache'))
+    df <- load(path)
+  } else {
+    print(paste('No cache found at', path, 'Running function.'))
+    df <- fun()
 
     print('Writing to cache')
     ensurePathExists(path)
