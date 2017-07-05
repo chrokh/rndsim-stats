@@ -97,7 +97,7 @@ for(recipients in combinationsOfRecipients) {
       sub <- subset(sub, sub$push %% pshN == 0 & sub$pull == pll)
 
       print('Calculate mean likelihoods with intervention')
-      sub$pois <- sub$pois / sub$projs * 100
+      sub$pois <- sub$pois / sub$projs
 
 
       print('Duplicate data into groups and derive estimated pois')
@@ -109,12 +109,12 @@ for(recipients in combinationsOfRecipients) {
       if ('A' %in% recipients) {
         setA <- sub
         setA$group <- 'A'
-        setA$pois <- setA$pois * mean(rangeA)
+        setA$pois <- setA$pois * mean(rangeA) * 12 * 30
         sub1 <- rbind(sub1, setA)
       } else {
         setA <- subset(sub, sub$pull_size == 0)
         setA$group <- 'A'
-        setA$pois <- setA$pois * mean(rangeA)
+        setA$pois <- setA$pois * mean(rangeA) * 12 * 30
         sub2 <- rbind(sub2, setA)
       }
 
@@ -123,12 +123,12 @@ for(recipients in combinationsOfRecipients) {
       if ('B' %in% recipients) {
         setB <- sub
         setB$group <- 'B'
-        setB$pois <- setB$pois * mean(rangeB)
+        setB$pois <- setB$pois * mean(rangeB) * 12 * 30
         sub1 <- rbind(sub1, setB)
       } else {
         setB <- subset(sub, sub$pull_size == 0)
         setB$group <- 'B'
-        setB$pois <- setB$pois * mean(rangeB)
+        setB$pois <- setB$pois * mean(rangeB) * 12 * 30
         sub2 <- rbind(sub2, setB)
       }
 
@@ -137,12 +137,12 @@ for(recipients in combinationsOfRecipients) {
       if ('C' %in% recipients) {
         setC <- sub
         setC$group <- 'C'
-        setC$pois <- setC$pois * mean(rangeC)
+        setC$pois <- setC$pois * mean(rangeC) * 12 * 30
         sub1 <- rbind(sub1, setC)
       } else {
         setC <- subset(sub, sub$pull_size == 0)
         setC$group <- 'C'
-        setC$pois <- setC$pois * mean(rangeC)
+        setC$pois <- setC$pois * mean(rangeC) * 12 * 30
         sub2 <- rbind(sub2, setC)
       }
 
@@ -155,9 +155,9 @@ for(recipients in combinationsOfRecipients) {
       # Prepare counts and visuals
       nSub1 <- length(unique(sub1$group))
       nSub2 <- length(unique(sub2$group))
-      yRange <- c(0, 44)
-      #yRange <- c(min(both$poi), max(both$poi))
-      yticks <- seq(min(yRange), max(yRange), by = 2)
+      #yRange <- c(0, 44)
+      yRange <- c(min(both$poi), max(both$poi))
+      yticks <- seq(roundToNearest(min(yRange), 10), max(yRange), by = 10)
 
 
 
