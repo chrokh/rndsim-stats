@@ -222,6 +222,11 @@ simpleGetSet <- function(cache_folder, cache_name, fun) {
   return(df)
 }
 
+makePath <- function(folder, name, format) {
+  folder <- gsub('(/$|\\$)', '', folder)
+  file.path(folder, paste(name, '.', format, sep=''))
+}
+
 ensurePathExists <- function(path) {
   if (dir.exists(dirname(path))) {
     print(paste('Directory', dirname(path), 'exists'))
