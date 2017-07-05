@@ -155,7 +155,7 @@ for(recipients in combinationsOfRecipients) {
       # Prepare counts and visuals
       nSub1 <- length(unique(sub1$group))
       nSub2 <- length(unique(sub2$group))
-      yRange <- c(0, 43)
+      yRange <- c(0, 44)
       #yRange <- c(min(both$poi), max(both$poi))
       yticks <- seq(min(yRange), max(yRange), by = 2)
 
@@ -242,24 +242,23 @@ for(recipients in combinationsOfRecipients) {
       abline(h = NULL, v = group, col = 'lightgray', lty = 'solid')
 
       # Legend 2
-      legend('topleft',
+      par(font=2,   # Bold legends
+          xpd=TRUE) # Turn off clipping (for putting legend outside plot region)
+
+      legend('top',
              c(
-               'A',
-               'B',
-               'C',
-               'A mean (no pull)',
-               'B mean (no pull)',
-               'C mean (no pull)'
+               'A       ',
+               'B       ',
+               'C       '
                ),
+             inset = c(0, -0.05),
              col = colors,
-             pch = c(15,15,15,NA,NA,NA),
-             lty = c(0,0,0,1,1,1),
+             pch = 15,
              lwd = 2,
-             box.col = 'white',
-             bg  = 'white',
+             box.col = NA,
+             horiz = TRUE,
              cex = 1.3
              )
-
 
     }
   }
