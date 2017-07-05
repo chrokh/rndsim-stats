@@ -233,7 +233,7 @@ for(recipients in combinationsOfRecipients) {
       for (grp in unique(both$group)) {
         d <- subset(both, both$group == grp & both$pull_size == 0)
         colorIndex <- which(c('A', 'B', 'C') == grp)
-        abline(h=mean(d$pois), col=colors[colorIndex], lty=1, lwd=1.5)
+        abline(h=mean(d$pois), col=colors[colorIndex], lty=1, lwd=2)
       }
 
       # Vertical (group) lines
@@ -241,25 +241,19 @@ for(recipients in combinationsOfRecipients) {
       group <- seq(start + offset, finish + offset, by=step)
       abline(h = NULL, v = group, col = 'lightgray', lty = 'solid')
 
-      # Legend
-      legend('top',
-             c('A', 'B', 'C'),
-             pch = 15, col = c('chartreuse2', 'cyan3', 'violet'),
-             box.col = 'white',
-             bg  = 'white',
-             cex = 1.3,
-             yjust = 10
-             )
-
       # Legend 2
       legend('topleft',
              c(
+               'A',
+               'B',
+               'C',
                'A mean (no pull)',
                'B mean (no pull)',
                'C mean (no pull)'
                ),
-             col = c('chartreuse2', 'cyan3', 'violet'),
-             lty = 1,
+             col = colors,
+             pch = c(15,15,15,NA,NA,NA),
+             lty = c(0,0,0,1,1,1),
              lwd = 2,
              box.col = 'white',
              bg  = 'white',
