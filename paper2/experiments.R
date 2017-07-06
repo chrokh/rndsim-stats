@@ -66,7 +66,6 @@ df <- getSet(args$input,
 
 
 
-
 # PLOT
 # ==================
 print('Plotting')
@@ -79,71 +78,58 @@ combinationsOfRecipients <- list(c('A','B','C'), c('A','B'), c('A'))
 combinationsOfPush <- c('YES', 'NO', 'BOTH')
 combinationsOfPull <- c('FDMER', 'PDMER')
 
-colors <- colorRampPalette(c('chartreuse2', 'cyan3', 'violet'))(3)
+colors  <- colorRampPalette(c('chartreuse2', 'cyan3', 'violet'))(3)
+colors2 <- colorRampPalette(c('chartreuse4', 'darkcyan', 'blueviolet'))(3)
+
+
+# Function for recomputing means
+prepareGroup <- function(data, grp, discRange) {
+  copy <- data
+  print('Recalculating means')
+  copy$group <- grp
+  copy$pois <- copy$pois / copy$projs
+  copy$pois <- copy$pois * mean(discRange) * 12 * 30
+  return(copy)
+}
 
 for(recipients in combinationsOfRecipients) {
   for(psh in combinationsOfPush) {
     for(pll in combinationsOfPull) {
 
+      # Use alias
       sub <- df
-      print('Restructure from TRUE/FALSE to number')
+
+      # Codify grants (from true false to numeric representation to allow three-valued logic)
       sub$push <- ifelse(sub$push, 6, 8)
       pshN <- ifelse(psh=='YES', 6, ifelse(psh=='NO', 8, 2))
-
-      # Create subset
       grants <- ifelse(psh=='YES', '_GRANTS', ifelse(psh=='NO', '_NOGRANTS', ''))
+
+      # Set and print dataset name
       name <- paste(paste(recipients, collapse='-'), '_', pll, grants, sep='')
       print(paste('Create subset', name))
+
+      # Create subset
       sub <- subset(sub, sub$push %% pshN == 0 & sub$pull == pll)
-
-      print('Calculate mean likelihoods with intervention')
-      sub$pois <- sub$pois / sub$projs
-
 
       print('Duplicate data into groups and derive estimated pois')
       sub1 <- data.frame()
       sub2 <- data.frame()
+      for(g in c('A', 'B', 'C')) {
+        gc()
+        discRange = NULL
+        if (g == 'A') discRange = rangeA
+        if (g == 'B') discRange = rangeB
+        if (g == 'C') discRange = rangeC
 
-      gc()
-      print('Creating A')
-      if ('A' %in% recipients) {
-        setA <- sub
-        setA$group <- 'A'
-        setA$pois <- setA$pois * mean(rangeA) * 12 * 30
-        sub1 <- rbind(sub1, setA)
-      } else {
-        setA <- subset(sub, sub$pull_size == 0)
-        setA$group <- 'A'
-        setA$pois <- setA$pois * mean(rangeA) * 12 * 30
-        sub2 <- rbind(sub2, setA)
-      }
-
-      gc()
-      print('Creating B')
-      if ('B' %in% recipients) {
-        setB <- sub
-        setB$group <- 'B'
-        setB$pois <- setB$pois * mean(rangeB) * 12 * 30
-        sub1 <- rbind(sub1, setB)
-      } else {
-        setB <- subset(sub, sub$pull_size == 0)
-        setB$group <- 'B'
-        setB$pois <- setB$pois * mean(rangeB) * 12 * 30
-        sub2 <- rbind(sub2, setB)
-      }
-
-      gc()
-      print('Creating C')
-      if ('C' %in% recipients) {
-        setC <- sub
-        setC$group <- 'C'
-        setC$pois <- setC$pois * mean(rangeC) * 12 * 30
-        sub1 <- rbind(sub1, setC)
-      } else {
-        setC <- subset(sub, sub$pull_size == 0)
-        setC$group <- 'C'
-        setC$pois <- setC$pois * mean(rangeC) * 12 * 30
-        sub2 <- rbind(sub2, setC)
+        print(paste('Creating', g, 'based on entry rate', mean(discRange)))
+        if (g %in% recipients) {
+          set <- sub
+          sub1 <- rbind(sub1, prepareGroup(set, g, discRange))
+        } else {
+          set <- sub
+          set <- subset(set, set$pull_size == 0)
+          sub2 <- rbind(sub2, prepareGroup(set, g, discRange))
+        }
       }
 
 
@@ -155,9 +141,10 @@ for(recipients in combinationsOfRecipients) {
       # Prepare counts and visuals
       nSub1 <- length(unique(sub1$group))
       nSub2 <- length(unique(sub2$group))
-      #yRange <- c(0, 44)
-      yRange <- c(min(both$poi), max(both$poi))
-      yticks <- seq(roundToNearest(min(yRange), 10), max(yRange), by = 10)
+      #yRange = c(0, 135)
+      yRange = c(0, 82)
+      #yRange <- c(min(both$poi), max(both$poi))
+      yticks <- seq(roundToNearest(min(yRange), 5), max(yRange), by = 5)
 
 
 
@@ -177,9 +164,14 @@ for(recipients in combinationsOfRecipients) {
       }
 
       if (nrow(sub2) > 0) {
-        boxcolors <- rep(tail(colors, nSub2), nSub1)
+        boxcolors  <- rep(tail(colors, nSub2), nSub1)
+        boxcolors2 <- rep(tail(colors2, nSub2), nSub1)
         plot(sub2$pois  ~ as.factor(sub2$group),
-             boxfill = boxcolors,
+             boxfill   = boxcolors,
+             whiskcol  = 'darkgray',
+             outcol    = 'darkgray',
+             staplecol = 'darkgray',
+             boxcol   = boxcolors2,
              axes    = FALSE,
              main    = '',
              ylim    = yRange,
@@ -188,22 +180,26 @@ for(recipients in combinationsOfRecipients) {
              las     = 2
              )
 
-        mtext('No pull', side=1, cex=0.75)
-        mtext('Entries Per Run', side = 2, line = -6.5, cex = 0.75)
-        abline(h=yticks, col='lightgray', lty=3)  # lines
+        mtext('No Pull', side=1, cex=0.75)
+        mtext('Market Approvals Per Run', side = 2, line = -6.5, cex = 0.75)
+        abline(h=yticks, col='gray', lty=3)  # lines
       }
 
-      boxcolors <- rep(head(colors, nSub1, nSub1))
+      boxcolors  <- rep(head(colors, nSub1, nSub1))
+      boxcolors2 <- rep(head(colors2, nSub1, nSub1))
       plot(sub1$pois  ~
            interaction(
                        sub1$group,
                        as.factor(sub1$pull_size)
                        ),
-           boxfill = boxcolors,
+           boxfill   = boxcolors,
+           whiskcol  = 'darkgray',
+           outcol    = 'darkgray',
+           staplecol = 'darkgray',
+           boxcol   = boxcolors2,
            axes    = FALSE,
-           yaxt    = 'n',
            frame.plot = FALSE,
-           main    = 'Derived number of antibiotics per run over 30 years',
+           main    = 'Derived Number of Antibiotics Per Run Over 30 years',
            ylim    = yRange,
            ylab    = '',
            xlab    = '',
@@ -215,12 +211,14 @@ for(recipients in combinationsOfRecipients) {
       }
 
 
+      # Convenience
       sizes  <- sort(unique(sub1$pull_size))
       pulls  <- sort(unique(sub1$pull))
       nSizes <- length(sizes)
 
+      # y axis
       axis(side=2, las = 2, at = yticks, lwd=0) # y
-      abline(h=yticks, col='lightgray', lty=3)  # lines
+      abline(h=yticks, col='gray', lty=3)  # lines
 
       ## x axis
       offset = 1 / nSub1 - 1
@@ -234,6 +232,7 @@ for(recipients in combinationsOfRecipients) {
         d <- subset(both, both$group == grp & both$pull_size == 0)
         colorIndex <- which(c('A', 'B', 'C') == grp)
         abline(h=mean(d$pois), col=colors[colorIndex], lty=1, lwd=2)
+        #abline(h=median(d$pois), col=colors[colorIndex], lty=1, lwd=2)
       }
 
       # Vertical (group) lines
@@ -242,14 +241,13 @@ for(recipients in combinationsOfRecipients) {
       abline(h = NULL, v = group, col = 'lightgray', lty = 'solid')
 
       # Legend 2
-      par(font=2,   # Bold legends
-          xpd=TRUE) # Turn off clipping (for putting legend outside plot region)
+      par(xpd=TRUE) # Turn off clipping (for putting legend outside plot region)
 
       legend('top',
              c(
-               'A       ',
-               'B       ',
-               'C       '
+               'A     ',
+               'B     ',
+               'C     '
                ),
              inset = c(0, -0.05),
              col = colors,
