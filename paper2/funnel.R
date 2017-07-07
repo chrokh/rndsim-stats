@@ -224,7 +224,7 @@ preparePull <- function(df, mertype) {
 # PLOT
 # ===========================================
 
-path   = makePath(args$output, 'push-funnel', 'pdf')
+path   = makePath(args$output, 'funnel', 'pdf')
 pdf(path, width = 11, height = 17, pointsize=15)
 layout(matrix(c(1,2,3), nrow=3, byrow=TRUE))
 
@@ -232,11 +232,12 @@ layout(matrix(c(1,2,3), nrow=3, byrow=TRUE))
 doPlot <- function(tbl, name, labels) {
   print('Will plot')
 
+  colors = rainbow(length(labels))
   #colors = colorRampPalette(c('bisque', 'brown2'))(length(labels))
-  colors = colorRampPalette(c('lightskyblue', 'dodgerblue4'))(length(labels))
+  #colors = colorRampPalette(c('lightskyblue', 'dodgerblue4'))(length(labels))
 
 
-  title = paste('Improvement in likelihood of phase entry by grant fraction (',
+  title = paste('Improvement in Likelihood of Phase Entry (',
                          name,
                          ')',
                          sep='')
