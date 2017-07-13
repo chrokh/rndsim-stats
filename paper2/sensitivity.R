@@ -169,12 +169,12 @@ buildFindMeans <- function(interaction, f=NULL) {
 
 # PLOTTING CALLER
 # ============================================
-doPlot <- function(name, df, context, binSize, xlab, xIsPercentage=FALSE) {
+doPlot <- function(name, df, context, binSize, xlab, xIsPercentage=FALSE, palette=NULL, legend=NULL) {
   plotToFile(makePath(name))
-  plotSensitivity(df=df, context=df, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage)
+  plotSensitivity(df=df, context=df, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage, palette=palette, legend=legend)
 
   plotToFile(makePath(paste('ylim-', name, sep='')))
-  plotSensitivity(df=df, context=context, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage)
+  plotSensitivity(df=df, context=context, binSize=binSize, xlab=xlab, xIsPercentage=xIsPercentage, palette=palette, legend=legend)
 }
 
 
@@ -186,17 +186,21 @@ plotSensitivity <- function(
                             context = NULL,
                             xlab    = NULL,
                             binSize = NULL,
-                            xIsPercentage = FALSE
+                            xIsPercentage = FALSE,
+                            palette = NULL,
+                            legend  = NULL
                             ) {
   # Convinience
-  interventions  <- sort(unique(df$interaction))
+  interventions  <- unique(df$interaction)
   hasInteraction <- 'interaction' %in% names(df)
 
   # Prepare colors
   if (hasInteraction) {
     colors   <- colorRampPalette(c('red', 'orange', 'green'))(length(interventions))
+    if (!is.null(palette)) {
+      colors <- colorRampPalette(palette)(length(interventions))
+    }
     df$color <- colors[as.numeric(as.factor(df$interaction))]
-
   }
 
   if (xIsPercentage) {
@@ -217,7 +221,7 @@ plotSensitivity <- function(
        yaxt = 'n',
        xaxt = 'n',
        xlab = xlab,
-       ylab = 'Mean Likelihood of Market Entry (%)',
+       ylab = 'Likelihood of Market Entry (%)',
        ylim = c(min(context$pois), max(context$pois))
        )
 
@@ -246,8 +250,11 @@ plotSensitivity <- function(
 
   # Legend
   if (hasInteraction) {
-    legend('bottomright', levels(factor(df$interaction)),
-           pch = 19, col = df$color, bty = 'n', title='MER',
+    pos = if(!is.null(legend)) legend else 'bottomright'
+    legend(pos, levels(factor(df$interaction)),
+           pch = 19,
+           col = colors,
+           bty = 'n',
            cex = 1)
   }
 }
@@ -407,3 +414,39 @@ doPlot('all-cost',   df.both.cost,   df.all, binSize.cost, 'Total Projected Cost
 doPlot('all-prob',   df.both.prob,   df.all, binSize.prob, 'Total Projected Probability of Success (%)', TRUE)
 doPlot('all-rate',   df.both.rate,   df.all, binSize.rate, 'Venture Capital Discount Rate (%)', TRUE)
 doPlot('all-thresh', df.both.thresh, df.all, NULL,         'Big Pharma Threshold (mUSD)')
+
+
+
+
+#
+# NO INTERACTION ALL AT ONCE
+# =========================================================
+print('### PARAMETER UNDER CONSIDERATION AS INTERACTION, ALL AT ONCE ###')
+findMeans <- buildFindMeans('interaction', function(df) { subset(df, df$intervention_size == 0) })
+
+normalize <- function(df, group) {
+  mi = min(df$x)
+  ma = max(df$x)
+  df$x <- (df$x - mi) / (ma - mi)
+  df$interaction <- group
+  df
+}
+
+print('Prepare push subsets for plotting')
+df.normalized <- rbind(
+                       findMeans(normalize(df.prob,   'Probability')),
+                       findMeans(normalize(df.cash,   'Revenue')),
+                       findMeans(normalize(df.cost,   'Cost')),
+                       findMeans(normalize(df.rate,   'Discount Rate')),
+                       findMeans(normalize(df.thresh, 'Threshold'))
+                       )
+
+# Plot push interaction
+clrs = c(
+         'chartreuse2',
+         'gold',
+         'coral1',
+         'bisque4',
+         'cornflowerblue'
+         )
+doPlot('all', df.normalized, df.normalized, 0.05, 'Input Parameter (%)', TRUE, palette=clrs, legend='topleft')
