@@ -24,7 +24,12 @@ args <-
                              c('-c', '--cache'),
                              default = '.',
                              help    = 'cache folder [default= %default]',
-                             metavar = 'folder')
+                             metavar = 'folder'),
+                 make_option(
+                             c('-r', '--reread'),
+                             default =FALSE,
+                             help    ='reread input per parameter (more reads, fewer columns per read) [default= %default]',
+                             metavar ='boolean')
                  ),
             function(args) !is.null(args$input))
 
@@ -46,31 +51,45 @@ binSize.rate <- 0.02
 
 # ONLY READ FILE ONCE BY CALLING THIS FUNCTION
 # ============================================
-loadIfNull <- function(df) {
-  if (is.null(df)) {
-    print('Does not have file in memory. Reading.')
-    df <- load(args$input,
-               c('RUN',
-                 'PROJ',
-                 'intervention',
-                 'grants_avg_frac',
-                 'interventions_tot_size',
-                 'proj_state',
-                 'proj_tot_cash',
-                 'proj_tot_cost',
-                 'proj_tot_prob',
-                 'inv_rate',
-                 'orgs_infcap_thresh'
-                 ))
+loadIfNull <- function(df, col) {
+  if (!args$reread) {
+    if (is.null(df)) {
+      print('Does not have file in memory. Reading.')
+      df <- load(args$input,
+                 c('RUN',
+                   'PROJ',
+                   'intervention',
+                   'grants_avg_frac',
+                   'interventions_tot_size',
+                   'proj_state',
+                   'proj_tot_cash',
+                   'proj_tot_cost',
+                   'proj_tot_prob',
+                   'inv_rate',
+                   'orgs_infcap_thresh'
+                   ))
 
+      print('Rename parameters')
+      names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
+      names(df)[names(df) == 'grants_avg_frac'] <- 'grants'
+      return(df)
+    } else {
+      print('Has file in memory. Returning')
+      return(df)
+    }
+  } else {
+    print('Rereading forced by flag --reread TRUE')
+    df <- load(args$input, c('RUN',
+                             'PROJ',
+                             'proj_state',
+                             'intervention',
+                             'interventions_tot_size',
+                             'grants_avg_frac',
+                             col))
     print('Rename parameters')
     names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
     names(df)[names(df) == 'grants_avg_frac'] <- 'grants'
-
-    df
-  } else {
-    print('Has file in memory. Returning')
-    df
+    return(df)
   }
 }
 df <- NULL
@@ -90,7 +109,7 @@ prepare <- function(col, binSize=NULL) {
   function() {
     print(paste('Preparing', col))
     gc()
-    df <<- loadIfNull(df)
+    df <<- loadIfNull(df, col)
     gc()
 
     print(paste('Rename', col, 'to x'))
@@ -231,7 +250,21 @@ plotSensitivity <- function(
   } else {
     xticks <- sort(unique(df$x))
   }
+
+  # Brute force find a good resolution for the y axis
   yticks <- seq(round(min(context$pois)), round(max(context$pois)), by = 1)
+  minAmountOfYTicks = 6
+  if (length(yticks) < minAmountOfYTicks) {
+    yticks <- seq(round(min(context$pois)), round(max(context$pois)), by = 0.5)
+  }
+  if (length(yticks) < minAmountOfYTicks) {
+    yticks <- seq(round(min(context$pois)), round(max(context$pois)), by = 0.25)
+  }
+  if (length(yticks) < minAmountOfYTicks) {
+    yticks <- seq(round(min(context$pois)), round(max(context$pois)), by = 0.1)
+  }
+
+  # Print tick marks
   axis(side=1, col='black', las = 2, at = xticks)
   axis(side=2, col='black', las = 2, at = yticks)
 
