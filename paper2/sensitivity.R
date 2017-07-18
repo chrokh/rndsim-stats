@@ -26,10 +26,10 @@ args <-
                              help    = 'cache folder [default= %default]',
                              metavar = 'folder'),
                  make_option(
-                             c('-r', '--reread'),
-                             default =FALSE,
-                             help    ='reread input per parameter (more reads, fewer columns per read) [default= %default]',
-                             metavar ='boolean')
+                             c('-s', '--stream'),
+                             default = TRUE,
+                             help    = 'read input line by line (only suitable for large files) [default= %default]',
+                             metavar = 'boolean')
                  ),
             function(args) !is.null(args$input))
 
@@ -48,51 +48,213 @@ binSize.rate <- 0.02
 
 
 
-
-# ONLY READ FILE ONCE BY CALLING THIS FUNCTION
 # ============================================
-loadIfNull <- function(df, col) {
-  if (!args$reread) {
-    if (is.null(df)) {
-      print('Does not have file in memory. Reading.')
-      df <- load(args$input,
-                 c('RUN',
-                   'PROJ',
-                   'intervention',
-                   'grants_avg_frac',
-                   'interventions_tot_size',
-                   'proj_state',
-                   'proj_tot_cash',
-                   'proj_tot_cost',
-                   'proj_tot_prob',
-                   'inv_rate',
-                   'orgs_infcap_thresh'
-                   ))
+# ALT 1: DDPLY FILE
+# ============================================
+cached <- NULL
+ddplyFile <- function(col) {
+  if (is.null(cached)) {
+    cached <- load(args$input, c(
+                                'PROJ',
+                                'proj_state',
+                                'intervention',
+                                'interventions_tot_size',
+                                'grants_avg_frac',
+                                'proj_tot_cash',
+                                'proj_tot_cost',
+                                'proj_tot_prob',
+                                'inv_rate',
+                                'orgs_infcap_thresh'
+                                ))
 
-      print('Rename parameters')
-      names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
-      names(df)[names(df) == 'grants_avg_frac'] <- 'grants'
-      return(df)
-    } else {
-      print('Has file in memory. Returning')
-      return(df)
-    }
-  } else {
-    print('Rereading forced by flag --reread TRUE')
-    df <- load(args$input, c('RUN',
-                             'PROJ',
-                             'proj_state',
-                             'intervention',
-                             'interventions_tot_size',
-                             'grants_avg_frac',
-                             col))
-    print('Rename parameters')
-    names(df)[names(df) == 'interventions_tot_size'] <- 'intervention_size'
-    names(df)[names(df) == 'grants_avg_frac'] <- 'grants'
-    return(df)
+    print('Rename columns')
+    names(cached)[names(cached) == 'interventions_tot_size'] <- 'intervention_size'
+    names(cached)[names(cached) == 'grants_avg_frac']        <- 'grants'
+
+    print('Bin interaction parameters')
+    cached$proj_tot_cash <- roundToNearest(cached$proj_tot_cash, binSize.cash)
+    cached$proj_tot_cost <- roundToNearest(cached$proj_tot_cost, binSize.cost)
+    cached$proj_tot_prob <- roundToNearest(cached$proj_tot_prob, binSize.prob)
+    cached$inv_rate      <- roundToNearest(cached$inv_rate,      binSize.rate)
+
+    cached <<- cached
   }
+
+
+  print('Compute likelihood')
+  df <- cached
+  df <- ddply(df, c('intervention', 'intervention_size', 'grants', col), summarise,
+              pois   = countCompletes(proj_state),
+              projs  = length(unique(PROJ)))
+
+
+  print(paste('Rename column', col, 'to x'))
+  names(df)[names(df) == col] <- 'x'
+
+  df
 }
-df <- NULL
+
+
+# ============================================
+# ALT 2: STREAM FILE
+# ============================================
+numLines <- NULL
+streamFile <- function(col, binSize) {
+
+  if (is.null(numLines)) {
+    print('Counting number of lines of input file')
+    numLines <<- as.numeric(system(paste('wc -l < ', args$input), intern=TRUE))
+  }
+
+  print('Begin streaming file...')
+  stop = FALSE
+  f = file(args$input, "r")
+  lineNum = 1
+  header = c()
+
+  projsDone <- c()
+  projsAll  <- c()
+
+
+  resultColumns = c(
+                  'RUN',
+                  'PROJ',
+                  'proj_state',
+                  'intervention',
+                  'interventions_tot_size',
+                  'grants_avg_frac',
+                  'x',
+                  'pois',
+                  'projs'
+                  )
+  result        <- data.frame(matrix(ncol=length(resultColumns), nrow=0))
+  names(result) <- resultColumns
+
+  while(!stop) {
+
+    if (lineNum == 1) {
+
+      # Save header if first line
+      header = unlist(strsplit(readLines(f, n = 1), ','))
+
+    } else {
+
+      # Read next line
+      next_line = unlist(strsplit(readLines(f, n = 1), ','))
+
+      # Convert row to df
+      df <- data.frame(matrix(ncol=length(header), nrow=0))
+      names(df) <- header
+      df[1,] <- next_line
+
+      # Rename col in question to x
+      names(df)[names(df) == col] <- 'x'
+
+      # Keep only relevant columns
+      df <- df[c(
+                 'PROJ',
+                 'proj_state',
+                 'intervention',
+                 'interventions_tot_size',
+                 'grants_avg_frac',
+                 'x'
+                 )]
+
+      # Extract info about row and then drop columns
+      isDone = df$proj_state == 'COMPLETED'
+      projID = df$PROJ
+      df <- df[, !(names(df) %in% c('PROJ', 'proj_state'))]
+
+      # Bin and coerce datatype
+      if (is.null(binSize)) {
+        df$x <- as.numeric(df$x)
+      } else {
+        df$x <- roundToNearest(as.numeric(df$x), binSize)
+      }
+
+      # If the project is completed and we have not seen it before as completed
+      if (isDone & !(projID %in% projsDone)) {
+
+        # Add it to the list of seen projects
+        projsDone <- c(projsDone, projID)
+
+        # Check if there's an entry matching the parameter combination
+        if(nrow(subset(result,
+                       (result$intervention == df$intervention &
+                        result$interventions_tot_size == df$interventions_tot_size &
+                        result$grants_avg_frac == df$grants_avg_frac &
+                        result$x == df$x))) > 0) {
+          # If so then edit
+          result$pois <- ifelse(
+                                (result$intervention == df$intervention &
+                                 result$interventions_tot_size == df$interventions_tot_size &
+                                 result$grants_avg_frac == df$grants_avg_frac &
+                                 result$x == df$x),
+                                result$pois + 1,
+                                result$pois)
+        } else {
+          # Else add
+          df$pois     <- 1
+          df$projs    <- 0
+          result <- rbind(result, df)
+        }
+
+      }
+
+      # If the project is not completed and we have not seen it before
+      else if (!(projID %in% projsAll)) {
+
+        # Add it to the list of seen projects
+        projsAll <- c(projsAll, projID)
+
+        # Check if there's an entry matching the parameter combination
+        if(nrow(subset(result, (result$intervention == df$intervention &
+                                result$interventions_tot_size == df$interventions_tot_size &
+                                result$grants_avg_frac == df$grants_avg_frac &
+                                result$x == df$x))) > 0) {
+          result$projs <- ifelse((result$intervention == df$intervention &
+                                  result$interventions_tot_size == df$interventions_tot_size &
+                                  result$grants_avg_frac == df$grants_avg_frac &
+                                  result$x == df$x),
+                                 result$projs + 1,
+                                 result$projs)
+        } else {
+          df$pois     <- 0
+          df$projs    <- 1
+          result <- rbind(result, df)
+        }
+
+      }
+
+      # Stop reading when there are no more lines
+      if(length(next_line) == 0) {
+        stop = TRUE
+        close(f)
+      }
+    }
+
+    # Increment number of lines read
+    lineNum = lineNum + 1
+
+    # Print % read every now and then
+    if (lineNum %% 10000 == 0) {
+      gc()
+      print(paste(round(lineNum / numLines, 2),
+                  '% streamed and converted',
+                  ' (', lineNum, '/', numLines, ')',
+                  ' (N=', nrow(result), ')',
+                  ' (', Sys.time(), ')',
+                  sep=''))
+    }
+  }
+  print('Completed streaming file')
+
+  print('Renaming columns')
+  names(result)[names(result) == 'interventions_tot_size'] <- 'intervention_size'
+  names(result)[names(result) == 'grants_avg_frac']        <- 'grants'
+
+  return(result)
+}
 
 
 
@@ -103,43 +265,27 @@ df <- NULL
 
 
 # ============================================
-# READ OR WRITE RESTRUCTURED DATA FROM CACHE
+# PREPARE
 # ============================================
 prepare <- function(col, binSize=NULL) {
-  function() {
-    print(paste('Preparing', col))
-    gc()
-    df <<- loadIfNull(df, col)
-    gc()
-
-    print(paste('Rename', col, 'to x'))
-    names(df)[names(df) == col] <- 'x'
-
-    print('Round x')
-    if (!is.null(binSize)) {
-      df$x <- roundToNearest(df$x, binSize)
+  if (args$stream) {
+    function() {
+      streamFile(col, binSize)
     }
-    gc()
-
-    print('Counting entries per group')
-    sub <- ddply(df, c('intervention', 'intervention_size', 'grants', 'x'), summarise,
-          pois   = countCompletes(proj_state),
-          projs  = length(unique(PROJ)))
-
-    print(paste('Rename back x to', col))
-    names(df)[names(df) == 'x'] <- col
-    df <<- df
-
-    return(sub)
+  } else {
+    function() {
+      ddplyFile(col)
+    }
   }
 }
 
-df.cash   <- simpleGetSet(args$cache, 'sensitivity-cash.csv',   prepare('proj_tot_cash',      binSize.cash))
-df.cost   <- simpleGetSet(args$cache, 'sensitivity-cost.csv',   prepare('proj_tot_cost',      binSize.cost))
-df.prob   <- simpleGetSet(args$cache, 'sensitivity-prob.csv',   prepare('proj_tot_prob',      binSize.prob))
-df.rate   <- simpleGetSet(args$cache, 'sensitivity-rate.csv',   prepare('inv_rate',           binSize.rate))
-df.thresh <- simpleGetSet(args$cache, 'sensitivity-thresh.csv', prepare('orgs_infcap_thresh', NULL))
 
+
+df.cash   <- simpleGetSet(args$cache, 'sensitivity-cash.csv',   prepare('proj_tot_cash', binSize.cash))
+df.cost   <- simpleGetSet(args$cache, 'sensitivity-cost.csv',   prepare('proj_tot_cost', binSize.cost))
+df.prob   <- simpleGetSet(args$cache, 'sensitivity-prob.csv',   prepare('proj_tot_prob', binSize.prob))
+df.rate   <- simpleGetSet(args$cache, 'sensitivity-rate.csv',   prepare('inv_rate',      binSize.rate))
+df.thresh <- simpleGetSet(args$cache, 'sensitivity-thresh.csv', prepare('orgs_infcap_thresh'))
 
 
 
@@ -164,7 +310,7 @@ makePath <- function(name) {
 buildFindMeans <- function(interaction, f=NULL) {
   function(df) {
     print('Recomputing means')
-    cols <- c('x')
+    cols <- c('x') # default in case of no interaction
 
     if (!is.null(f)) {
       print('Applying function')
@@ -175,7 +321,6 @@ buildFindMeans <- function(interaction, f=NULL) {
     if (!is.null(interaction)) {
       names(df)[names(df) == interaction] <- 'interaction'
       cols <- c('x', 'interaction')
-    } else {
     }
     df <- ddply(df, cols, summarise,
                 pois  = sum(pois),
