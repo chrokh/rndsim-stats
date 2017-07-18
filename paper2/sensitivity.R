@@ -103,7 +103,7 @@ streamFile <- function(col, binSize) {
 
   if (is.null(numLines)) {
     print('Counting number of lines of input file')
-    numLines <<- as.numeric(system(paste('wc -l < ', args$input), intern=TRUE))
+    numLines <<- nrow(fread(args$input, select = 1L))
   }
 
   print('Begin streaming file...')
